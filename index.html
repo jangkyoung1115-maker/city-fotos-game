@@ -4,14 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>광명시 타임슬립 탐험대</title>
-    <!-- 카카오맵 API (제공해주신 키 적용) -->
-   <!-- 수정 -->
-<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=8157177d4a1cb67b5f645d94f77822a5"></script>
+    <!-- 카카오맵 API (https 명시 및 autoload=false 적용) -->
+    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=8157177d4a1cb67b5f645d94f77822a5&autoload=false"></script>
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
         #map { width: 100%; height: 100vh; }
         
-        /* 상단 UI 패널 (자원 및 앨범 버튼) */
+        /* 상단 UI 패널 */
         .top-panel {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.95); padding: 10px 20px; border-radius: 30px;
@@ -84,79 +83,80 @@
     <!-- 3. 내 사진첩 (도감) 팝업 -->
     <div id="album-modal" class="modal">
         <h3>📖 나의 광명 타임슬립 앨범</h3>
-        <div id="album-list">
-            <!-- 획득한 사진들이 여기에 동적으로 쌓입니다 -->
-        </div>
+        <div id="album-list"></div>
         <button class="btn btn-secondary" onclick="closeModal('album-modal')">닫기</button>
     </div>
 
     <script>
-        // 1. 지도 초기화 (광명시청 기준)
-        var container = document.getElementById('map');
-        var options = {
-            center: new kakao.maps.LatLng(37.4784, 126.8646),
-            level: 3
-        };
-        var map = new kakao.maps.Map(container, options);
+        // 카카오맵 SDK 로드 대기 함수 적용
+        kakao.maps.load(function() {
+            var container = document.getElementById('map');
+            var options = {
+                center: new kakao.maps.LatLng(37.4784, 126.8646),
+                level: 3
+            };
+            var map = new kakao.maps.Map(container, options);
 
-        // 유저 커서(마커)
-        var userMarker = new kakao.maps.Marker({
-            position: new kakao.maps.LatLng(37.4784, 126.8646)
+            // 유저 커서(마커)
+            var userMarker = new kakao.maps.Marker({
+                position: new kakao.maps.LatLng(37.4784, 126.8646)
+            });
+            userMarker.setMap(map);
+
+            // 타임캡슐 스팟 설정 (테스트용 좌표: 광명시청 인근)
+            var targetLat = 37.4784;
+            var targetLon = 126.8646;
+            var capsuleMarker = new kakao.maps.Marker({
+                position: new kakao.maps.LatLng(targetLat, targetLon)
+            });
+            capsuleMarker.setMap(map);
+
+            // 유저 재화 (필름)
+            let userFilms = 5;
+
+            // 거리 계산 함수 (미터 단위)
+            function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+                var R = 6371000;
+                var dLat = (lat2 - lat1) * (Math.PI / 180);
+                var dLon = (lon2 - lon1) * (Math.PI / 180);
+                var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            }
+
+            // GPS 실시간 추적
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    function(position) {
+                        var lat = position.coords.latitude;
+                        var lon = position.coords.longitude;
+                        var currentPos = new kakao.maps.LatLng(lat, lon);
+
+                        userMarker.setPosition(currentPos);
+                        map.setCenter(currentPos);
+
+                        // 20미터 이내 접근 시 팝업 오픈
+                        var distance = getDistanceFromLatLonInMeters(lat, lon, targetLat, targetLon);
+                        if (distance <= 20) {
+                            document.getElementById('discovery-modal').style.display = 'block';
+                        }
+                    },
+                    function(error) { console.error("GPS 오류", error); },
+                    { enableHighAccuracy: true }
+                );
+            }
         });
-        userMarker.setMap(map);
-
-        // 타임캡슐 스팟 설정 (테스트용 좌표: 광명시청 인근)
-        var targetLat = 37.4784;
-        var targetLon = 126.8646;
-        var capsuleMarker = new kakao.maps.Marker({
-            position: new kakao.maps.LatLng(targetLat, targetLon)
-        });
-        capsuleMarker.setMap(map);
-
-        // 유저 재화 (필름)
-        let userFilms = 5;
-
-        // 거리 계산 함수 (미터 단위)
-        function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-            var R = 6371000;
-            var dLat = (lat2 - lat1) * (Math.PI / 180);
-            var dLon = (lon2 - lon1) * (Math.PI / 180);
-            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        }
-
-        // GPS 실시간 추적
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(
-                function(position) {
-                    var lat = position.coords.latitude;
-                    var lon = position.coords.longitude;
-                    var currentPos = new kakao.maps.LatLng(lat, lon);
-
-                    userMarker.setPosition(currentPos);
-                    map.setCenter(currentPos);
-
-                    // 20미터 이내 접근 시 팝업 오픈
-                    var distance = getDistanceFromLatLonInMeters(lat, lon, targetLat, targetLon);
-                    if (distance <= 20) {
-                        document.getElementById('discovery-modal').style.display = 'block';
-                    }
-                },
-                function(error) { console.error("GPS 오류", error); },
-                { enableHighAccuracy: true }
-            );
-        }
 
         // 캡슐 열기 버튼 클릭 시
         function startMission() {
+            let userFilms = parseInt(document.getElementById('film-count').innerText);
             if (userFilms < 3) {
                 alert("필름이 부족합니다! 광명시를 더 걸어서 필름을 모아보세요.");
                 return;
             }
-            userFilms -= 3; // 필름 3개 차감
+            userFilms -= 3;
             document.getElementById('film-count').innerText = userFilms;
             
             closeModal('discovery-modal');
@@ -170,7 +170,7 @@
             
             let btn = document.getElementById('complete-btn');
             btn.disabled = false;
-            btn.className = 'btn'; // 활성화 색상으로 변경
+            btn.className = 'btn';
         }
 
         // 사진 획득 및 LocalStorage 저장
@@ -181,9 +181,7 @@
                 url: "https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400"
             };
 
-            // 기존 도감 불러오기
             let album = JSON.parse(localStorage.getItem('gwangmyeong_album') || '[]');
-            // 중복 저장 방지 체크
             if (!album.some(item => item.title === photoData.title)) {
                 album.push(photoData);
                 localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
