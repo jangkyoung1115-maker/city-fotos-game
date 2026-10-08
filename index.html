@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 관리자 등록 안정화 버전</title>
+    <title>타임슬립 탐험대 - 등록 오류 완벽 해결 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -27,7 +27,7 @@
             z-index: 1000; font-size: 13px; text-align: center; max-width: 90%; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
-        /* 팝업 모달 스타일 (Z-index를 확실히 높게 설정) */
+        /* 팝업 모달 스타일 */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
@@ -110,12 +110,7 @@
         <h3>🛠️ 타임캡슐 관리자 모드</h3>
         
         <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 양평 옛 다리)">
-        
-        <div style="text-align: left; font-size: 12px; margin: 5px 0; color: #444;">
-            <label>사진 파일 선택:</label>
-            <input type="file" id="admin-file" accept="image/*" class="form-input" style="margin-top: 3px;">
-        </div>
-
+        <input type="text" id="admin-url" class="form-input" placeholder="이미지 주소 (기본값 제공됨, 변경 가능)">
         <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
         
         <div style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin: 8px 0; border: 1px dashed #ccc;">
@@ -139,6 +134,8 @@
             if (urlParams.get('admin') === 'true') {
                 document.getElementById('admin-mode-btn').style.display = 'inline-block';
             }
+            // 기본 이미지 URL 세팅
+            document.getElementById('admin-url').value = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400";
         });
 
         var map = L.map('map').setView([37.5665, 126.9780], 15);
@@ -457,10 +454,11 @@
             document.getElementById('admin-modal').style.display = 'block';
         }
 
+        // 🌟 최종 등록 함수 안정화 버전
         function addNewCapsule() {
             let title = document.getElementById('admin-title').value.trim();
             let desc = document.getElementById('admin-desc').value.trim();
-            let fileInput = document.getElementById('admin-file');
+            let url = document.getElementById('admin-url').value.trim();
 
             if (!title) {
                 alert("타임캡슐 제목을 입력해주세요!");
@@ -470,49 +468,39 @@
                 alert("먼저 [지도에서 위치 직접 찍기] 버튼을 눌러 지도 위를 터치해주세요!");
                 return;
             }
-            if (fileInput.files.length === 0) {
-                alert("등록할 사진 파일을 선택해주세요!");
+            if (!url) {
+                alert("이미지 주소를 입력해주세요!");
                 return;
             }
 
-            let file = fileInput.files[0];
-            let reader = new FileReader();
-
-            reader.onload = function(e) {
-                let base64Image = e.target.result;
-                
-                let capsules = getCapsules();
-                let newCapsule = {
-                    id: "capsule_" + Date.now(),
-                    title: title,
-                    lat: pickedLat,
-                    lon: pickedLon,
-                    url: base64Image,
-                    desc: desc || "새로 발굴된 역사 타임캡슐입니다."
-                };
-
-                capsules.push(newCapsule);
-                localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
-
-                alert("✨ 선택한 위치에 타임캡슐이 성공적으로 등록되었습니다!");
-                
-                // 입력 필드 초기화
-                document.getElementById('admin-title').value = "";
-                document.getElementById('admin-desc').value = "";
-                document.getElementById('admin-file').value = "";
-                document.getElementById('selected-coords-text').innerText = "선택된 위치: 미지정 (아래 버튼을 누르세요)";
-                pickedLat = null;
-                pickedLon = null;
-                if (tempPickMarker) {
-                    map.removeLayer(tempPickMarker);
-                    tempPickMarker = null;
-                }
-
-                closeModal('admin-modal');
-                renderCapsuleMarkers();
+            let capsules = getCapsules();
+            let newCapsule = {
+                id: "capsule_" + Date.now(),
+                title: title,
+                lat: pickedLat,
+                lon: pickedLon,
+                url: url,
+                desc: desc || "새로 발굴된 역사 타임캡슐입니다."
             };
 
-            reader.readAsDataURL(file);
+            capsules.push(newCapsule);
+            localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
+
+            alert("✨ 선택한 위치에 타임캡슐이 성공적으로 등록되었습니다!");
+            
+            // 입력 필드 초기화
+            document.getElementById('admin-title').value = "";
+            document.getElementById('admin-desc').value = "";
+            document.getElementById('selected-coords-text').innerText = "선택된 위치: 미지정 (아래 버튼을 누르세요)";
+            pickedLat = null;
+            pickedLon = null;
+            if (tempPickMarker) {
+                map.removeLayer(tempPickMarker);
+                tempPickMarker = null;
+            }
+
+            closeModal('admin-modal');
+            renderCapsuleMarkers();
         }
 
         function deleteCapsule(id) {
