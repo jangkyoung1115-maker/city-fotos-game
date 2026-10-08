@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 사진 압축 저장 안정화 버전</title>
+    <title>타임슬립 탐험대 - 완성형</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -39,8 +39,8 @@
             border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px;
         }
         .btn-secondary { background: #ccc; color: #333; }
-        .btn-danger { background: #f44336; color: white; padding: 5px 8px; font-size: 10px; margin-top: 0; width: auto; }
-        .btn-edit { background: #ff9800; color: white; padding: 5px 8px; font-size: 10px; margin-top: 0; width: auto; }
+        .btn-danger { background: #f44336; color: white; padding: 4px 8px; font-size: 10px; margin-top: 0; width: auto; }
+        .btn-edit { background: #ff9800; color: white; padding: 4px 8px; font-size: 10px; margin-top: 0; width: auto; }
 
         .form-input {
             width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px;
@@ -56,9 +56,9 @@
             display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer;
         }
 
-        .scroll-list { max-height: 35vh; overflow-y: auto; text-align: left; margin-bottom: 10px; }
-        .list-item { display: flex; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 8px; align-items: center; justify-content: space-between; }
-        .list-item img { width: 45px; height: 45px; border-radius: 6px; object-fit: cover; }
+        .scroll-list { max-height: 150px; overflow-y: auto; text-align: left; margin-top: 8px; display: none; border: 1px solid #eee; padding: 5px; border-radius: 6px; }
+        .list-item { display: flex; gap: 8px; margin-bottom: 6px; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; align-items: center; justify-content: space-between; }
+        .list-item img { width: 35px; height: 35px; border-radius: 4px; object-fit: cover; }
     </style>
 </head>
 <body>
@@ -102,41 +102,45 @@
     <!-- 3. 내 사진첩 (도감) 모달 -->
     <div id="album-modal" class="modal">
         <h3>📖 나의 타임슬립 앨범</h3>
-        <div id="album-list" class="scroll-list"></div>
+        <div id="album-list" style="max-height: 35vh; overflow-y: auto; text-align: left; margin-bottom: 10px;"></div>
         <button class="btn btn-secondary" onclick="closeModal('album-modal')">닫기</button>
     </div>
 
     <!-- 4. 관리자 모드 모달 -->
-    <div id="admin-modal" class="modal" style="max-width: 400px;">
+    <div id="admin-modal" class="modal" style="max-width: 380px;">
         <h3 id="admin-modal-title">🛠️ 타임캡슐 관리자 모드</h3>
         
         <input type="hidden" id="edit-capsule-id" value="">
 
         <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 양평 옛 다리)">
         
-        <div style="background: #fdfdfd; padding: 8px; border-radius: 8px; margin: 6px 0; border: 1px solid #ddd; text-align: left;">
+        <div style="background: #fdfdfd; padding: 6px; border-radius: 8px; margin: 4px 0; border: 1px solid #ddd; text-align: left;">
             <label style="font-size: 11px; font-weight: bold; color: #333;">📸 사진 선택 (폰 갤러리 또는 파일)</label>
-            <input type="file" id="admin-file" accept="image/*" class="form-input" style="margin-top: 4px; font-size: 11px; padding: 6px;">
-            
-            <div style="font-size: 10px; color: #666; margin: 4px 0; text-align: center;">--- 또는 이미지 URL 직접 입력 ---</div>
-            <input type="text" id="admin-url" class="form-input" placeholder="https:// 이미지 주소 입력">
+            <input type="file" id="admin-file" accept="image/*" class="form-input" style="margin-top: 2px; font-size: 11px; padding: 4px;">
+            <div style="font-size: 10px; color: #666; margin: 2px 0; text-align: center;">--- 또는 이미지 URL ---</div>
+            <input type="text" id="admin-url" class="form-input" placeholder="https:// 이미지 주소" style="margin-bottom: 2px; padding: 6px;">
         </div>
 
         <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
         
-        <div style="background: #f9f9f9; padding: 8px; border-radius: 8px; margin: 6px 0; border: 1px dashed #ccc;">
+        <div style="background: #f9f9f9; padding: 6px; border-radius: 8px; margin: 4px 0; border: 1px dashed #ccc;">
             <div id="selected-coords-text" style="font-size: 11px; color: #c2185b; font-weight: bold; margin-bottom: 4px;">선택된 위치: 미지정 (아래 버튼을 누르세요)</div>
             <button class="btn" style="background: #3f51b5; margin-top: 0; padding: 6px; font-size: 12px;" onclick="startPickingLocation()">📍 지도에서 위치 직접 찍기</button>
         </div>
 
-        <button id="admin-submit-btn" class="btn" style="background:#4caf50;" onclick="processAndSaveCapsule()">✨ 타임캡슐 등록하기</button>
-        <button id="admin-cancel-edit-btn" class="btn btn-secondary" style="display:none; margin-top: 5px;" onclick="resetAdminForm()">수정 취소</button>
+        <button id="admin-submit-btn" class="btn" style="background:#4caf50; margin-top: 6px; padding: 10px;" onclick="processAndSaveCapsule()">✨ 타임캡슐 등록하기</button>
+        <button id="admin-cancel-edit-btn" class="btn btn-secondary" style="display:none; margin-top: 4px; padding: 6px;" onclick="resetAdminForm()">수정 취소</button>
         
-        <hr style="margin: 10px 0; border:0; border-top:1px solid #eee;">
-        <h4 style="margin: 3px 0; font-size: 12px; text-align: left;">등록된 캡슐 목록 (수정/삭제 가능)</h4>
-        <div id="admin-capsule-list" class="scroll-list"></div>
+        <!-- 🌟 목록 접기/펼치기 아코디언 타이틀 -->
+        <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 6px; text-align: left;">
+            <div onclick="toggleAdminList()" style="font-size: 12px; font-weight: bold; color: #3f51b5; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                <span>📂 등록된 캡슐 목록 보기 (수정/삭제)</span>
+                <span id="list-toggle-icon">▼</span>
+            </div>
+            <div id="admin-capsule-list" class="scroll-list"></div>
+        </div>
 
-        <button class="btn btn-secondary" onclick="closeModal('admin-modal')" style="margin-top: 5px;">닫기</button>
+        <button class="btn btn-secondary" onclick="closeModal('admin-modal')" style="margin-top: 8px; padding: 8px;">닫기</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -217,7 +221,8 @@
             let album = getAlbum();
 
             capsules.forEach(cap => {
-                let collected = album.some(item => item.title === cap.title);
+                // 🌟 ID 기반으로 정확하게 수집 여부 판별 (오류 방지)
+                let collected = album.some(item => item.id === cap.id);
                 
                 let capsuleBg = collected ? 'linear-gradient(135deg, #ffd700, #ff8f00)' : 'linear-gradient(135deg, #9c27b0, #673ab7)';
                 let capsuleShadow = collected ? 'rgba(255,215,0,0.9)' : 'rgba(156,39,176,0.9)';
@@ -339,7 +344,7 @@
 
                     let banner = document.getElementById('guide-banner');
                     if (nearestCapsule) {
-                        let isCollected = album.some(item => item.title === nearestCapsule.title);
+                        let isCollected = album.some(item => item.id === nearestCapsule.id);
                         if (minDistance <= 10 && !isCollected) {
                             banner.innerText = `🎯 [${nearestCapsule.title}] 발견 지점 도달!`;
                             if (!activeCapsule || activeCapsule.id !== nearestCapsule.id) {
@@ -422,6 +427,7 @@
 
         function savePhoto() {
             let photoData = {
+                id: activeCapsule.id, // 🌟 고유 ID 연동
                 title: activeCapsule.title,
                 date: new Date().toLocaleDateString(),
                 url: activeCapsule.url,
@@ -429,7 +435,7 @@
             };
 
             let album = getAlbum();
-            if (!album.some(item => item.title === photoData.title)) {
+            if (!album.some(item => item.id === photoData.id)) {
                 album.push(photoData);
                 localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
                 alert("🎉 성공적으로 사진을 도감에 수집했습니다!");
@@ -446,6 +452,20 @@
             document.getElementById('admin-modal').style.display = 'block';
         }
 
+        // 🌟 목록 아코디언 토글 기능
+        function toggleAdminList() {
+            let listDiv = document.getElementById('admin-capsule-list');
+            let icon = document.getElementById('list-toggle-icon');
+            if (listDiv.style.display === 'block') {
+                listDiv.style.display = 'none';
+                icon.innerText = '▼';
+            } else {
+                listDiv.style.display = 'block';
+                icon.innerText = '▲';
+                renderAdminList();
+            }
+        }
+
         function renderAdminList() {
             let listDiv = document.getElementById('admin-capsule-list');
             listDiv.innerHTML = "";
@@ -458,9 +478,9 @@
                     listDiv.innerHTML += `
                         <div class="list-item">
                             <img src="${cap.url}" alt="미리보기">
-                            <div style="flex-grow:1; margin-left:6px;">
-                                <div style="font-weight:bold; font-size:11px;">${cap.title}</div>
-                                <div style="font-size:9px; color:#888;">위도: ${cap.lat.toFixed(4)}, 경도: ${cap.lon.toFixed(4)}</div>
+                            <div style="flex-grow:1; margin-left:6px; overflow:hidden;">
+                                <div style="font-weight:bold; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${cap.title}</div>
+                                <div style="font-size:9px; color:#888;">${cap.lat.toFixed(3)}, ${cap.lon.toFixed(3)}</div>
                             </div>
                             <button class="btn btn-edit" onclick="editCapsule('${cap.id}')">수정</button>
                             <button class="btn btn-danger" onclick="deleteCapsule('${cap.id}')">삭제</button>
@@ -508,7 +528,6 @@
             document.getElementById('admin-cancel-edit-btn').style.display = 'none';
         }
 
-        // 🌟 고해상도 사진을 브라우저에서 가볍게 압축(리사이징)하여 저장하는 핵심 함수
         function processAndSaveCapsule() {
             let editId = document.getElementById('edit-capsule-id').value;
             let title = document.getElementById('admin-title').value.trim();
@@ -533,22 +552,15 @@
                     let img = new Image();
                     img.src = e.target.result;
                     img.onload = function() {
-                        // 캔버스를 이용해 가로 세로 최대 600px로 자동 압축 (용량 초과 방지)
                         let canvas = document.createElement('canvas');
-                        let max_size = 600;
+                        let max_size = 500;
                         let width = img.width;
                         let height = img.height;
 
                         if (width > height) {
-                            if (width > max_size) {
-                                height *= max_size / width;
-                                width = max_size;
-                            }
+                            if (width > max_size) { height *= max_size / width; width = max_size; }
                         } else {
-                            if (height > max_size) {
-                                width *= max_size / height;
-                                height = max_size;
-                            }
+                            if (height > max_size) { width *= max_size / height; height = max_size; }
                         }
 
                         canvas.width = width;
@@ -556,14 +568,12 @@
                         let ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
 
-                        // JPEG 포맷으로 압축된 Base64 문자열 생성 (품질 0.8)
-                        let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75);
                         
                         try {
                             saveCapsuleData(editId, title, desc, compressedDataUrl, pickedLat, pickedLon);
                         } catch (err) {
-                            alert("⚠️ 저장 공간이 부족합니다. 다른 사진을 선택하거나 캐시를 정리해주세요.");
-                            console.error(err);
+                            alert("⚠️ 저장 공간이 부족합니다.");
                         }
                     };
                 };
@@ -646,6 +656,8 @@
             document.getElementById(modalId).style.display = 'none';
             if(modalId === 'admin-modal') {
                 resetAdminForm();
+                document.getElementById('admin-capsule-list').style.display = 'none';
+                document.getElementById('list-toggle-icon').innerText = '▼';
             }
         }
     </script>
