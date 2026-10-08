@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 초소형 직사각형 필름 버전</title>
+    <title>타임슬립 탐험대 - 갤러리 파일 & URL 겸용 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -113,7 +113,16 @@
         <input type="hidden" id="edit-capsule-id" value="">
 
         <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 양평 옛 다리)">
-        <input type="text" id="admin-url" class="form-input" placeholder="이미지 주소 (URL)">
+        
+        <!-- 🌟 사진첩 파일 업로드 또는 URL 입력 선택 기능 -->
+        <div style="background: #fdfdfd; padding: 8px; border-radius: 8px; margin: 6px 0; border: 1px solid #ddd; text-align: left;">
+            <label style="font-size: 11px; font-weight: bold; color: #333;">📸 사진 선택 (폰 갤러리 또는 파일)</label>
+            <input type="file" id="admin-file" accept="image/*" class="form-input" style="margin-top: 4px; font-size: 11px; padding: 6px;">
+            
+            <div style="font-size: 10px; color: #666; margin: 4px 0; text-align: center;">--- 또는 이미지 URL 직접 입력 ---</div>
+            <input type="text" id="admin-url" class="form-input" placeholder="https:// 이미지 주소 입력">
+        </div>
+
         <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
         
         <div style="background: #f9f9f9; padding: 8px; border-radius: 8px; margin: 6px 0; border: 1px dashed #ccc;">
@@ -121,7 +130,7 @@
             <button class="btn" style="background: #3f51b5; margin-top: 0; padding: 6px; font-size: 12px;" onclick="startPickingLocation()">📍 지도에서 위치 직접 찍기</button>
         </div>
 
-        <button id="admin-submit-btn" class="btn" style="background:#4caf50;" onclick="saveCapsule()">✨ 타임캡슐 등록하기</button>
+        <button id="admin-submit-btn" class="btn" style="background:#4caf50;" onclick="processAndSaveCapsule()">✨ 타임캡슐 등록하기</button>
         <button id="admin-cancel-edit-btn" class="btn btn-secondary" style="display:none; margin-top: 5px;" onclick="resetAdminForm()">수정 취소</button>
         
         <hr style="margin: 10px 0; border:0; border-top:1px solid #eee;">
@@ -138,7 +147,6 @@
             if (urlParams.get('admin') === 'true') {
                 document.getElementById('admin-mode-btn').style.display = 'inline-block';
             }
-            document.getElementById('admin-url').value = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400";
         });
 
         var map = L.map('map').setView([37.5665, 126.9780], 15);
@@ -230,7 +238,6 @@
             });
         }
 
-        // 🌟 초소형 직사각형 필름 조각 (가로 11px, 세로 7px)
         function spawnDustObjects(centerLat, centerLon) {
             let offsets = [
                 {dLat: 0.0003, dLon: 0.0003},
@@ -487,6 +494,8 @@
             document.getElementById('edit-capsule-id').value = "";
             document.getElementById('admin-title').value = "";
             document.getElementById('admin-desc').value = "";
+            document.getElementById('admin-file').value = "";
+            document.getElementById('admin-url').value = "";
             document.getElementById('selected-coords-text').innerText = "선택된 위치: 미지정 (아래 버튼을 누르세요)";
             pickedLat = null;
             pickedLon = null;
@@ -500,11 +509,13 @@
             document.getElementById('admin-cancel-edit-btn').style.display = 'none';
         }
 
-        function saveCapsule() {
+        // 🌟 파일(갤러리) 또는 URL을 선택적으로 처리하는 최종 등록 함수
+        function processAndSaveCapsule() {
             let editId = document.getElementById('edit-capsule-id').value;
             let title = document.getElementById('admin-title').value.trim();
             let desc = document.getElementById('admin-desc').value.trim();
-            let url = document.getElementById('admin-url').value.trim();
+            let urlInput = document.getElementById('admin-url').value.trim();
+            let fileInput = document.getElementById('admin-file');
 
             if (!title) {
                 alert("타임캡슐 제목을 입력해주세요!");
@@ -514,11 +525,25 @@
                 alert("먼저 [지도에서 위치 직접 찍기] 버튼을 눌러 지도 위를 터치해주세요!");
                 return;
             }
-            if (!url) {
-                alert("이미지 주소를 입력해주세요!");
-                return;
-            }
 
+            // 파일이 선택되었을 경우 우선 처리, 아니면 URL 사용
+            if (fileInput.files && fileInput.files[0]) {
+                let file = fileInput.files[0];
+                let reader = new FileReader();
+
+                reader.onload = function(e) {
+                    let base64Image = e.target.result;
+                    saveCapsuleData(editId, title, desc, base64Image, pickedLat, pickedLon);
+                };
+                reader.readAsDataURL(file);
+            } else if (urlInput) {
+                saveCapsuleData(editId, title, desc, urlInput, pickedLat, pickedLon);
+            } else {
+                alert("사진 파일을 선택하거나 이미지 URL을 입력해주세요!");
+            }
+        }
+
+        function saveCapsuleData(editId, title, desc, imageUrl, lat, lon) {
             let capsules = getCapsules();
 
             if (editId) {
@@ -526,18 +551,18 @@
                 if (index !== -1) {
                     capsules[index].title = title;
                     capsules[index].desc = desc || "역사 타임캡슐입니다.";
-                    capsules[index].url = url;
-                    capsules[index].lat = pickedLat;
-                    capsules[index].lon = pickedLon;
+                    capsules[index].url = imageUrl;
+                    capsules[index].lat = lat;
+                    capsules[index].lon = lon;
                     alert("✨ 타임캡슐이 성공적으로 수정되었습니다!");
                 }
             } else {
                 let newCapsule = {
                     id: "capsule_" + Date.now(),
                     title: title,
-                    lat: pickedLat,
-                    lon: pickedLon,
-                    url: url,
+                    lat: lat,
+                    lon: lon,
+                    url: imageUrl,
                     desc: desc || "새로 발굴된 역사 타임캡슐입니다."
                 };
                 capsules.push(newCapsule);
