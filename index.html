@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 아치 액자형 캡슐 버전</title>
+    <title>타임슬립 탐험대 - 소형 푸른 필름 & 아치 액자 캡슐</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -212,12 +212,11 @@
             capsules.forEach(cap => {
                 let collected = album.some(item => item.title === cap.title);
                 
-                // 🌟 빈티지 아치 액자형 색상 및 아이콘 설정 (미발견: 보라색 / 수집 완료: 황금빛 트로피)
+                // 🌟 발굴 전에는 보라색, 발굴(수집) 후에는 황금색 아치 액자
                 let capsuleBg = collected ? 'linear-gradient(135deg, #ffd700, #ff8f00)' : 'linear-gradient(135deg, #9c27b0, #673ab7)';
                 let capsuleShadow = collected ? 'rgba(255,215,0,0.9)' : 'rgba(156,39,176,0.9)';
                 let capsuleText = collected ? '🏆' : '⏳';
 
-                // 상단은 둥글고 하단은 반듯한 아치형 액자 모양 (border-radius: 상단좌우 12px, 하단좌우 2px)
                 let capsuleIcon = L.divIcon({
                     className: 'custom-arch-capsule',
                     html: `<div style="width:22px; height:28px; background:${capsuleBg}; border-radius: 12px 12px 3px 3px; border:2px solid white; box-shadow:0 0 8px ${capsuleShadow}; display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:bold;">${capsuleText}</div>`,
@@ -232,6 +231,7 @@
             });
         }
 
+        // 🌟 푸른색 테두리와 아담한 절반 크기(10px)로 줄인 필름 조각
         function spawnDustObjects(centerLat, centerLon) {
             let offsets = [
                 {dLat: 0.0003, dLon: 0.0003},
@@ -245,13 +245,13 @@
 
                 let filmIcon = L.divIcon({
                     className: 'custom-film',
-                    html: '<div style="background:#333; width:16px; height:16px; border-radius:3px; border:1.5px solid white; box-shadow:0 0 5px rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; font-size:9px;">🎞️</div>',
-                    iconSize: [16, 16],
-                    iconAnchor: [8, 8]
+                    html: '<div style="background:#1e88e5; width:10px; height:10px; border-radius:2px; border:1.5px solid white; box-shadow:0 0 5px rgba(30,136,229,0.8); display:flex; align-items:center; justify-content:center; font-size:6px;">🎞️</div>',
+                    iconSize: [10, 10],
+                    iconAnchor: [5, 5]
                 });
 
                 let marker = L.marker([dLat, dLon], {icon: filmIcon}).addTo(map);
-                marker.bindPopup("<b>🎞️ 빛바랜 필름 조각</b><br>터치해서 필름을 수집하세요!");
+                marker.bindPopup("<b>🎞️ 푸른 필름 조각</b><br>터치해서 필름을 수집하세요!");
                 
                 marker.on('click', function() {
                     let dist = getDistanceFromLatLonInMeters(currentLat, currentLon, dLat, dLon);
@@ -428,7 +428,7 @@
                 album.push(photoData);
                 localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
                 alert("🎉 성공적으로 사진을 도감에 수집했습니다!");
-                renderCapsuleMarkers(); // 🌟 수집 즉시 보라색 아치 액자가 황금빛 트로피 액자로 변경됨!
+                renderCapsuleMarkers(); // 수집 즉시 보라색 아치가 황금빛 트로피 액자로 변경됨
             } else {
                 alert("이미 도감에 등록된 사진입니다!");
             }
