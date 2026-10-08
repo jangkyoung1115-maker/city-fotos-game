@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 등록 오류 완벽 해결 버전</title>
+    <title>타임슬립 탐험대 - 다이아몬드 캡슐 & 소형 커서 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -31,7 +31,7 @@
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            z-index: 9999; text-align: center; width: 85%; max-width: 360px; box-sizing: border-box;
+            z-index: 9999; text-align: center; width: 85%; max-width: 380px; box-sizing: border-box;
         }
         .modal h3 { margin-top: 0; color: #333; }
         .btn {
@@ -39,10 +39,11 @@
             border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px;
         }
         .btn-secondary { background: #ccc; color: #333; }
-        .btn-danger { background: #f44336; color: white; padding: 6px 10px; font-size: 11px; margin-top: 0; width: auto; }
+        .btn-danger { background: #f44336; color: white; padding: 5px 8px; font-size: 10px; margin-top: 0; width: auto; }
+        .btn-edit { background: #ff9800; color: white; padding: 5px 8px; font-size: 10px; margin-top: 0; width: auto; }
 
         .form-input {
-            width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px;
+            width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px;
         }
 
         #scratch-box {
@@ -55,9 +56,9 @@
             display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer;
         }
 
-        .scroll-list { max-height: 40vh; overflow-y: auto; text-align: left; margin-bottom: 10px; }
-        .list-item { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px; align-items: center; justify-content: space-between; }
-        .list-item img { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; }
+        .scroll-list { max-height: 35vh; overflow-y: auto; text-align: left; margin-bottom: 10px; }
+        .list-item { display: flex; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 8px; align-items: center; justify-content: space-between; }
+        .list-item img { width: 45px; height: 45px; border-radius: 6px; object-fit: cover; }
     </style>
 </head>
 <body>
@@ -107,24 +108,27 @@
 
     <!-- 4. 관리자 모드 모달 -->
     <div id="admin-modal" class="modal" style="max-width: 400px;">
-        <h3>🛠️ 타임캡슐 관리자 모드</h3>
+        <h3 id="admin-modal-title">🛠️ 타임캡슐 관리자 모드</h3>
         
+        <input type="hidden" id="edit-capsule-id" value="">
+
         <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 양평 옛 다리)">
-        <input type="text" id="admin-url" class="form-input" placeholder="이미지 주소 (기본값 제공됨, 변경 가능)">
+        <input type="text" id="admin-url" class="form-input" placeholder="이미지 주소 (URL)">
         <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
         
-        <div style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin: 8px 0; border: 1px dashed #ccc;">
-            <div id="selected-coords-text" style="font-size: 12px; color: #c2185b; font-weight: bold; margin-bottom: 6px;">선택된 위치: 미지정 (아래 버튼을 누르세요)</div>
-            <button class="btn" style="background: #3f51b5; margin-top: 0; padding: 8px;" onclick="startPickingLocation()">📍 지도에서 위치 직접 찍기</button>
+        <div style="background: #f9f9f9; padding: 8px; border-radius: 8px; margin: 6px 0; border: 1px dashed #ccc;">
+            <div id="selected-coords-text" style="font-size: 11px; color: #c2185b; font-weight: bold; margin-bottom: 4px;">선택된 위치: 미지정 (아래 버튼을 누르세요)</div>
+            <button class="btn" style="background: #3f51b5; margin-top: 0; padding: 6px; font-size: 12px;" onclick="startPickingLocation()">📍 지도에서 위치 직접 찍기</button>
         </div>
 
-        <button class="btn" style="background:#4caf50;" onclick="addNewCapsule()">✨ 타임캡슐 최종 등록</button>
+        <button id="admin-submit-btn" class="btn" style="background:#4caf50;" onclick="saveCapsule()">✨ 타임캡슐 등록하기</button>
+        <button id="admin-cancel-edit-btn" class="btn btn-secondary" style="display:none; margin-top: 5px;" onclick="resetAdminForm()">수정 취소</button>
         
-        <hr style="margin: 12px 0; border:0; border-top:1px solid #eee;">
-        <h4 style="margin: 3px 0; font-size: 12px; text-align: left;">등록된 캡슐 목록</h4>
-        <div id="admin-capsule-list" class="scroll-list" style="max-height: 110px;"></div>
+        <hr style="margin: 10px 0; border:0; border-top:1px solid #eee;">
+        <h4 style="margin: 3px 0; font-size: 12px; text-align: left;">등록된 캡슐 목록 (수정/삭제 가능)</h4>
+        <div id="admin-capsule-list" class="scroll-list"></div>
 
-        <button class="btn btn-secondary" onclick="closeModal('admin-modal')">닫기</button>
+        <button class="btn btn-secondary" onclick="closeModal('admin-modal')" style="margin-top: 5px;">닫기</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -134,7 +138,6 @@
             if (urlParams.get('admin') === 'true') {
                 document.getElementById('admin-mode-btn').style.display = 'inline-block';
             }
-            // 기본 이미지 URL 세팅
             document.getElementById('admin-url').value = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400";
         });
 
@@ -212,11 +215,14 @@
                 let capsuleShadow = collected ? 'rgba(255,215,0,0.9)' : 'rgba(156,39,176,0.9)';
                 let capsuleText = collected ? '🏆' : '⏳';
 
+                // 🌟 타임캡슐: 크기 절반 축소 (18px) 및 다이아몬드 모양 (CSS 회전 기법 적용)
                 let capsuleIcon = L.divIcon({
                     className: 'custom-capsule',
-                    html: `<div style="background:${capsuleBg}; width:36px; height:36px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px ${capsuleShadow}; display:flex; align-items:center; justify-content:center; color:white; font-size:16px; font-weight:bold;">${capsuleText}</div>`,
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 18]
+                    html: `<div style="width:18px; height:18px; transform:rotate(45deg); background:${capsuleBg}; border:2px solid white; box-shadow:0 0 6px ${capsuleShadow}; display:flex; align-items:center; justify-content:center;">
+                             <div style="transform:rotate(-45deg); color:white; font-size:9px; font-weight:bold;">${capsuleText}</div>
+                           </div>`,
+                    iconSize: [18, 18],
+                    iconAnchor: [9, 9]
                 });
 
                 let marker = L.marker([cap.lat, cap.lon], {icon: capsuleIcon}).addTo(map);
@@ -275,11 +281,12 @@
                     if (isFirstGPS) {
                         isFirstGPS = false;
                         
+                        // 🌟 유저 이동 커서: 기존 22px에서 절반인 12px로 축소
                         let userIcon = L.divIcon({
                             className: 'custom-user',
-                            html: '<div style="background:#00c853; width:22px; height:22px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,200,83,0.8);"></div>',
-                            iconSize: [22, 22],
-                            iconAnchor: [11, 11]
+                            html: '<div style="background:#00c853; width:12px; height:12px; border-radius:50%; border:2px solid white; box-shadow:0 0 6px rgba(0,200,83,0.8);"></div>',
+                            iconSize: [12, 12],
+                            iconAnchor: [6, 6]
                         });
 
                         userMarker = L.marker([currentLat, currentLon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
@@ -431,6 +438,11 @@
         }
 
         function openAdminModal() {
+            renderAdminList();
+            document.getElementById('admin-modal').style.display = 'block';
+        }
+
+        function renderAdminList() {
             let listDiv = document.getElementById('admin-capsule-list');
             listDiv.innerHTML = "";
             let capsules = getCapsules();
@@ -442,20 +454,56 @@
                     listDiv.innerHTML += `
                         <div class="list-item">
                             <img src="${cap.url}" alt="미리보기">
-                            <div style="flex-grow:1; margin-left:8px;">
+                            <div style="flex-grow:1; margin-left:6px;">
                                 <div style="font-weight:bold; font-size:11px;">${cap.title}</div>
                                 <div style="font-size:9px; color:#888;">위도: ${cap.lat.toFixed(4)}, 경도: ${cap.lon.toFixed(4)}</div>
                             </div>
+                            <button class="btn btn-edit" onclick="editCapsule('${cap.id}')">수정</button>
                             <button class="btn btn-danger" onclick="deleteCapsule('${cap.id}')">삭제</button>
                         </div>
                     `;
                 });
             }
-            document.getElementById('admin-modal').style.display = 'block';
         }
 
-        // 🌟 최종 등록 함수 안정화 버전
-        function addNewCapsule() {
+        function editCapsule(id) {
+            let capsules = getCapsules();
+            let cap = capsules.find(c => c.id === id);
+            if (!cap) return;
+
+            document.getElementById('edit-capsule-id').value = cap.id;
+            document.getElementById('admin-title').value = cap.title;
+            document.getElementById('admin-url').value = cap.url;
+            document.getElementById('admin-desc').value = cap.desc;
+            
+            pickedLat = cap.lat;
+            pickedLon = cap.lon;
+            document.getElementById('selected-coords-text').innerText = `선택된 위치: 위도 ${pickedLat.toFixed(4)}, 경도 ${pickedLon.toFixed(4)}`;
+
+            document.getElementById('admin-modal-title').innerText = "🛠️ 타임캡슐 수정 모드";
+            document.getElementById('admin-submit-btn').innerText = "💾 타임캡슐 수정 완료";
+            document.getElementById('admin-cancel-edit-btn').style.display = 'block';
+        }
+
+        function resetAdminForm() {
+            document.getElementById('edit-capsule-id').value = "";
+            document.getElementById('admin-title').value = "";
+            document.getElementById('admin-desc').value = "";
+            document.getElementById('selected-coords-text').innerText = "선택된 위치: 미지정 (아래 버튼을 누르세요)";
+            pickedLat = null;
+            pickedLon = null;
+            if (tempPickMarker) {
+                map.removeLayer(tempPickMarker);
+                tempPickMarker = null;
+            }
+
+            document.getElementById('admin-modal-title').innerText = "🛠️ 타임캡슐 관리자 모드";
+            document.getElementById('admin-submit-btn').innerText = "✨ 타임캡슐 등록하기";
+            document.getElementById('admin-cancel-edit-btn').style.display = 'none';
+        }
+
+        function saveCapsule() {
+            let editId = document.getElementById('edit-capsule-id').value;
             let title = document.getElementById('admin-title').value.trim();
             let desc = document.getElementById('admin-desc').value.trim();
             let url = document.getElementById('admin-url').value.trim();
@@ -474,31 +522,33 @@
             }
 
             let capsules = getCapsules();
-            let newCapsule = {
-                id: "capsule_" + Date.now(),
-                title: title,
-                lat: pickedLat,
-                lon: pickedLon,
-                url: url,
-                desc: desc || "새로 발굴된 역사 타임캡슐입니다."
-            };
 
-            capsules.push(newCapsule);
-            localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
-
-            alert("✨ 선택한 위치에 타임캡슐이 성공적으로 등록되었습니다!");
-            
-            // 입력 필드 초기화
-            document.getElementById('admin-title').value = "";
-            document.getElementById('admin-desc').value = "";
-            document.getElementById('selected-coords-text').innerText = "선택된 위치: 미지정 (아래 버튼을 누르세요)";
-            pickedLat = null;
-            pickedLon = null;
-            if (tempPickMarker) {
-                map.removeLayer(tempPickMarker);
-                tempPickMarker = null;
+            if (editId) {
+                let index = capsules.findIndex(c => c.id === editId);
+                if (index !== -1) {
+                    capsules[index].title = title;
+                    capsules[index].desc = desc || "역사 타임캡슐입니다.";
+                    capsules[index].url = url;
+                    capsules[index].lat = pickedLat;
+                    capsules[index].lon = pickedLon;
+                    alert("✨ 타임캡슐이 성공적으로 수정되었습니다!");
+                }
+            } else {
+                let newCapsule = {
+                    id: "capsule_" + Date.now(),
+                    title: title,
+                    lat: pickedLat,
+                    lon: pickedLon,
+                    url: url,
+                    desc: desc || "새로 발굴된 역사 타임캡슐입니다."
+                };
+                capsules.push(newCapsule);
+                alert("✨ 새로운 타임캡슐이 성공적으로 등록되었습니다!");
             }
 
+            localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
+            
+            resetAdminForm();
             closeModal('admin-modal');
             renderCapsuleMarkers();
         }
@@ -508,7 +558,7 @@
                 let capsules = getCapsules();
                 capsules = capsules.filter(c => c.id !== id);
                 localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
-                openAdminModal();
+                renderAdminList();
                 renderCapsuleMarkers();
             }
         }
@@ -539,6 +589,9 @@
 
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
+            if(modalId === 'admin-modal') {
+                resetAdminForm();
+            }
         }
     </script>
 </body>
