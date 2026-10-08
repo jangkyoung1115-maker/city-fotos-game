@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 초경량 압축 버전</title>
+    <title>타임슬립 탐험대 - 레이아웃 최적화 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -13,12 +13,13 @@
         .top-panel {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.95); padding: 10px 18px; border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 11px;
         }
         .resource-badge { color: #ff5722; }
         .step-badge { color: #4caf50; }
-        .action-btn { background: #3f51b5; color: white; border: none; padding: 6px 12px; border-radius: 15px; cursor: pointer; font-size: 11px; }
+        .action-btn { background: #3f51b5; color: white; border: none; padding: 6px 10px; border-radius: 15px; cursor: pointer; font-size: 11px; }
         .admin-btn { background: #e91e63; color: white; display: none; }
+        .list-btn { background: #ff9800; color: white; display: none; }
 
         /* 하단 가이드 배너 */
         .guide-banner {
@@ -56,7 +57,7 @@
             display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer;
         }
 
-        .scroll-list { max-height: 150px; overflow-y: auto; text-align: left; margin-top: 8px; display: none; border: 1px solid #eee; padding: 5px; border-radius: 6px; }
+        .scroll-list { max-height: 45vh; overflow-y: auto; text-align: left; margin-bottom: 10px; }
         .list-item { display: flex; gap: 8px; margin-bottom: 6px; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; align-items: center; justify-content: space-between; }
         .list-item img { width: 35px; height: 35px; border-radius: 4px; object-fit: cover; }
     </style>
@@ -69,6 +70,7 @@
         <span>👣 <span id="step-count" class="step-badge">0</span></span>
         <button class="action-btn" onclick="openAlbum()">사진첩</button>
         <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">관리자 모드</button>
+        <button id="admin-list-btn" class="action-btn list-btn" onclick="openAdminListModal()">캡슐 목록</button>
     </div>
 
     <!-- 하단 가이드 배너 -->
@@ -106,7 +108,7 @@
         <button class="btn btn-secondary" onclick="closeModal('album-modal')">닫기</button>
     </div>
 
-    <!-- 4. 관리자 모드 모달 -->
+    <!-- 4. 관리자 모드 모달 (등록/수정 전용) -->
     <div id="admin-modal" class="modal" style="max-width: 380px;">
         <h3 id="admin-modal-title">🛠️ 타임캡슐 관리자 모드</h3>
         
@@ -117,7 +119,7 @@
         <div style="background: #fdfdfd; padding: 6px; border-radius: 8px; margin: 4px 0; border: 1px solid #ddd; text-align: left;">
             <label style="font-size: 11px; font-weight: bold; color: #333;">📸 사진 선택 (폰 갤러리)</label>
             <input type="file" id="admin-file" accept="image/*" class="form-input" style="margin-top: 2px; font-size: 11px; padding: 4px;">
-            <div style="font-size: 10px; color: #666; margin: 2px 0; text-align: center;">--- 또는 이미지 URL (추천) ---</div>
+            <div style="font-size: 10px; color: #666; margin: 2px 0; text-align: center;">--- 또는 이미지 URL ---</div>
             <input type="text" id="admin-url" class="form-input" placeholder="https:// 이미지 주소 입력" style="margin-bottom: 2px; padding: 6px;">
         </div>
 
@@ -131,15 +133,14 @@
         <button id="admin-submit-btn" class="btn" style="background:#4caf50; margin-top: 6px; padding: 10px;" onclick="processAndSaveCapsule()">✨ 타임캡슐 등록하기</button>
         <button id="admin-cancel-edit-btn" class="btn btn-secondary" style="display:none; margin-top: 4px; padding: 6px;" onclick="resetAdminForm()">수정 취소</button>
         
-        <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 6px; text-align: left;">
-            <div onclick="toggleAdminList()" style="font-size: 12px; font-weight: bold; color: #3f51b5; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                <span>📂 등록된 캡슐 목록 보기 (수정/삭제)</span>
-                <span id="list-toggle-icon">▼</span>
-            </div>
-            <div id="admin-capsule-list" class="scroll-list"></div>
-        </div>
+        <button class="btn btn-secondary" onclick="closeModal('admin-modal')" style="margin-top: 10px; padding: 10px;">닫기</button>
+    </div>
 
-        <button class="btn btn-secondary" onclick="closeModal('admin-modal')" style="margin-top: 8px; padding: 8px;">닫기</button>
+    <!-- 5. 🌟 독립된 등록된 캡슐 목록 모달 (수정/삭제 전용) -->
+    <div id="admin-list-modal" class="modal" style="max-width: 380px;">
+        <h3>📂 등록된 캡슐 목록</h3>
+        <div id="admin-capsule-list" class="scroll-list"></div>
+        <button class="btn btn-secondary" onclick="closeModal('admin-list-modal')" style="margin-top: 10px; padding: 10px;">닫기</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -148,6 +149,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('admin') === 'true') {
                 document.getElementById('admin-mode-btn').style.display = 'inline-block';
+                document.getElementById('admin-list-btn').style.display = 'inline-block';
             }
         });
 
@@ -446,21 +448,12 @@
         }
 
         function openAdminModal() {
-            renderAdminList();
             document.getElementById('admin-modal').style.display = 'block';
         }
 
-        function toggleAdminList() {
-            let listDiv = document.getElementById('admin-capsule-list');
-            let icon = document.getElementById('list-toggle-icon');
-            if (listDiv.style.display === 'block') {
-                listDiv.style.display = 'none';
-                icon.innerText = '▼';
-            } else {
-                listDiv.style.display = 'block';
-                icon.innerText = '▲';
-                renderAdminList();
-            }
+        function openAdminListModal() {
+            renderAdminList();
+            document.getElementById('admin-list-modal').style.display = 'block';
         }
 
         function renderAdminList() {
@@ -469,7 +462,7 @@
             let capsules = getCapsules();
 
             if (capsules.length === 0) {
-                listDiv.innerHTML = "<p style='color:#888; font-size:11px;'>등록된 캡슐이 없습니다.</p>";
+                listDiv.innerHTML = "<p style='color:#888; font-size:11px; text-align:center;'>등록된 캡슐이 없습니다.</p>";
             } else {
                 capsules.forEach((cap) => {
                     listDiv.innerHTML += `
@@ -479,7 +472,7 @@
                                 <div style="font-weight:bold; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${cap.title}</div>
                                 <div style="font-size:9px; color:#888;">${cap.lat.toFixed(3)}, ${cap.lon.toFixed(3)}</div>
                             </div>
-                            <button class="btn btn-edit" onclick="editCapsule('${cap.id}')">수정</button>
+                            <button class="btn btn-edit" onclick="closeModal('admin-list-modal'); editCapsule('${cap.id}')">수정</button>
                             <button class="btn btn-danger" onclick="deleteCapsule('${cap.id}')">삭제</button>
                         </div>
                     `;
@@ -504,6 +497,8 @@
             document.getElementById('admin-modal-title').innerText = "🛠️ 타임캡슐 수정 모드";
             document.getElementById('admin-submit-btn').innerText = "💾 타임캡슐 수정 완료";
             document.getElementById('admin-cancel-edit-btn').style.display = 'block';
+            
+            document.getElementById('admin-modal').style.display = 'block';
         }
 
         function resetAdminForm() {
@@ -525,7 +520,6 @@
             document.getElementById('admin-cancel-edit-btn').style.display = 'none';
         }
 
-        // 🌟 초경량 압축 (최대 300px, 품질 0.6)으로 저장 공간 초과 원천 차단
         function processAndSaveCapsule() {
             let editId = document.getElementById('edit-capsule-id').value;
             let title = document.getElementById('admin-title').value.trim();
@@ -551,7 +545,7 @@
                     img.src = e.target.result;
                     img.onload = function() {
                         let canvas = document.createElement('canvas');
-                        let max_size = 300; // 초경량화
+                        let max_size = 300;
                         let width = img.width;
                         let height = img.height;
 
@@ -647,6 +641,7 @@
                     `;
                 });
             }
+            document.getElementById('album-modal').style.display = 'modal' || 'block';
             document.getElementById('album-modal').style.display = 'block';
         }
 
@@ -654,8 +649,6 @@
             document.getElementById(modalId).style.display = 'none';
             if(modalId === 'admin-modal') {
                 resetAdminForm();
-                document.getElementById('admin-capsule-list').style.display = 'none';
-                document.getElementById('list-toggle-icon').innerText = '▼';
             }
         }
     </script>
