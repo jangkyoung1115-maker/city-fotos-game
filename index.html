@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 마커 구분 버전</title>
+    <title>타임슬립 탐험대 - 황금빛 도감 연동 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -122,6 +122,12 @@
         let accumulatedMeters = 0;
         let userFilms = 15;
 
+        // 이미 수집된 사진인지 확인하는 함수
+        function isCapsuleCollected() {
+            let album = JSON.parse(localStorage.getItem('gwangmyeong_album') || '[]');
+            return album.some(item => item.title === "추억의 옛 풍경 타임캡슐");
+        }
+
         function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
             var R = 6371000;
             var dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -184,22 +190,28 @@
                         targetLat = lat + 0.0005; // 약 50m 위 타임캡슐
                         targetLon = lon;
 
-                        // ⏳ 타임캡슐 전용 커스텀 아이콘 (보라색 빛나는 캡슐 디자인)
+                        // 수집 여부에 따라 아이콘 색상 변경 (이미 수집했으면 황금색, 아니면 보라색)
+                        let collected = isCapsuleCollected();
+                        let capsuleBg = collected ? 'linear-gradient(135deg, #ffd700, #ff8f00)' : 'linear-gradient(135deg, #9c27b0, #673ab7)';
+                        let capsuleShadow = collected ? 'rgba(255,215,0,0.9)' : 'rgba(156,39,176,0.9)';
+                        let capsuleText = collected ? '🏆' : '⏳';
+
                         let capsuleIcon = L.divIcon({
                             className: 'custom-capsule',
-                            html: '<div style="background:linear-gradient(135deg, #9c27b0, #673ab7); width:36px; height:36px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(156,39,176,0.9); display:flex; align-items:center; justify-content:center; color:white; font-size:16px; font-weight:bold;">⏳</div>',
+                            html: `<div style="background:${capsuleBg}; width:36px; height:36px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px ${capsuleShadow}; display:flex; align-items:center; justify-content:center; color:white; font-size:16px; font-weight:bold;">${capsuleText}</div>`,
                             iconSize: [36, 36],
                             iconAnchor: [18, 18]
                         });
 
-                        capsuleMarker = L.marker([targetLat, targetLon], {icon: capsuleIcon}).addTo(map).bindPopup("<b>🎁 [테스트] 1980년대 타임캡슐</b>").openPopup();
+                        let popupText = collected ? "<b>👑 [수집 완료] 타임캡슐</b>" : "<b>🎁 [테스트] 1980년대 타임캡슐</b>";
+                        capsuleMarker = L.marker([targetLat, targetLon], {icon: capsuleIcon}).addTo(map).bindPopup(popupText).openPopup();
                         
-                        // 내 위치 전용 아이콘 (파란색 커서)
+                        // 내 위치 전용 아이콘 (초록색 커서로 변경하여 파란 먼지와 명확히 구분)
                         let userIcon = L.divIcon({
                             className: 'custom-user',
-                            html: '<div style="background:#007aff; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,122,255,0.8);"></div>',
-                            iconSize: [20, 20],
-                            iconAnchor: [10, 10]
+                            html: '<div style="background:#00c853; width:22px; height:22px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,200,83,0.8);"></div>',
+                            iconSize: [22, 22],
+                            iconAnchor: [11, 11]
                         });
 
                         userMarker = L.marker([lat, lon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
@@ -239,10 +251,14 @@
                     if (distance <= 50 && distance > 10) {
                         banner.innerText = `✨ 근처에 타임캡슐이 숨겨져 있습니다! (약 ${Math.round(distance)}m)`;
                     } else if (distance <= 10) {
-                        banner.innerText = "🎯 타임캡슐 발견 지점에 도달했습니다!";
-                        if (!hasDiscovered) {
-                            hasDiscovered = true;
-                            document.getElementById('discovery-modal').style.display = 'block';
+                        if (!isCapsuleCollected()) {
+                            banner.innerText = "🎯 타임캡슐 발견 지점에 도달했습니다!";
+                            if (!hasDiscovered) {
+                                hasDiscovered = true;
+                                document.getElementById('discovery-modal').style.display = 'block';
+                            }
+                        } else {
+                            banner.innerText = "🏆 이미 수집을 완료한 황금 타임캡슐 지점입니다!";
                         }
                     } else {
                         banner.innerText = `타임캡슐까지 거리: 약 ${Math.round(distance)}m | 파란색 먼지를 터치해 필름을 모아보세요!`;
@@ -289,6 +305,17 @@
                 album.push(photoData);
                 localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
                 alert("🎉 성공적으로 사진을 도감에 수집했습니다!");
+
+                // 🌟 수집 성공 시 지도 위의 타임캡슐 아이콘을 즉시 황금색으로 변경!
+                let goldIcon = L.divIcon({
+                    className: 'custom-capsule',
+                    html: '<div style="background:linear-gradient(135deg, #ffd700, #ff8f00); width:36px; height:36px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(255,215,0,0.9); display:flex; align-items:center; justify-content:center; color:white; font-size:16px; font-weight:bold;">🏆</div>',
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                });
+                capsuleMarker.setIcon(goldIcon);
+                capsuleMarker.bindPopup("<b>👑 [수집 완료] 타임캡슐 (황금빛 보관됨)</b>");
+
             } else {
                 alert("이미 도감에 등록된 사진입니다!");
             }
