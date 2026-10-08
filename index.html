@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 (위치 적응형)</title>
+    <title>타임슬립 탐험대 - 파밍 & 걸음수 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -13,9 +13,10 @@
         .top-panel {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.95); padding: 10px 20px; border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; gap: 15px; font-weight: bold; font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; gap: 12px; font-weight: bold; font-size: 13px;
         }
         .resource-badge { color: #ff5722; }
+        .step-badge { color: #4caf50; }
         .album-btn { background: #3f51b5; color: white; border: none; padding: 6px 12px; border-radius: 15px; cursor: pointer; font-size: 12px; }
 
         /* 하단 가이드 배너 */
@@ -59,13 +60,14 @@
 
     <!-- 상단 상태바 -->
     <div class="top-panel">
-        <span>🎞️ 필름: <span id="film-count" class="resource-badge">15</span>개</span>
+        <span>🎞️ <span id="film-count" class="resource-badge">15</span>개</span>
+        <span>👣 <span id="step-count" class="step-badge">0</span>걸음</span>
         <button class="album-btn" onclick="openAlbum()">내 사진첩</button>
     </div>
 
     <!-- 하단 가이드 배너 -->
     <div id="guide-banner" class="guide-banner">
-        현재 위치를 탐색 중입니다... GPS 권한을 허용해 주세요.
+        GPS 위치를 탐색 중입니다...
     </div>
 
     <!-- 지도 영역 -->
@@ -100,7 +102,6 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 초기 지도 (임시로 대한민국 중심 좌표 설정, GPS 잡히면 이동)
         var map = L.map('map').setView([37.5665, 126.9780], 15);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -110,12 +111,16 @@
 
         var userMarker = null;
         var capsuleMarker = null;
+        var dustMarkers = []; // 시간의 먼지 마커 배열
         
-        // 타임캡슐 좌표 (처음 접속한 내 위치 기준 북쪽으로 약 30미터 떨어진 곳에 자동 생성!)
         var targetLat = null;
         var targetLon = null;
         let hasDiscovered = false;
         let isFirstGPS = true;
+
+        let totalSteps = 0;      // 누적 걸음수
+        let accumulatedMeters = 0; // 이동 거리 누적 (미터 단위)
+        let userFilms = 15;      // 보유 필름
 
         function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
             var R = 6371000;
@@ -128,28 +133,97 @@
             return R * c;
         }
 
-        // GPS 실시간 추적 및 내 위치 적응형 타임캡슐 배치
+        // 주변에 '시간의 먼지' 오브젝트 여러 개 생성 함수
+        function spawnDustObjects(centerLat, centerLon) {
+            // 테스트를 위해 내 주변 15~40미터 반경 내에 3개의 파란색 먼지 생성
+            let offsets = [
+                {dLat: 0.0003, dLon: 0.0003},
+                {dLat: -0.0003, dLon: 0.0004},
+                {dLat: 0.0004, dLon: -0.0003}
+            ];
+
+            offsets.forEach((offset, index) => {
+                let dLat = centerLat + offset.dLat;
+                let dLon = centerLon + offset.dLon;
+
+                // 파란색 원형 아이콘 (시간의 먼지)
+                let dustIcon = L.divIcon({
+                    className: 'custom-dust',
+                    html: '<div style="background:#2196f3; width:20px; height:20px; border-radius:50%; border:2px solid white; box-shadow:0 0 8px rgba(33,150,243,0.8); display:flex; align-items:center; justify-content:center; color:white; font-size:10px;">✨</div>',
+                    iconSize: [20, 20]
+                });
+
+                let marker = L.marker([dLat, dLon], {icon: dustIcon}).addTo(map);
+                marker.bindPopup("<b>✨ 시간의 먼지 조각</b><br>터치해서 필름을 수집하세요!");
+                
+                // 클릭 시 파밍 이벤트
+                marker.on('click', function() {
+                    let dist = getDistanceFromLatLonInMeters(userMarker.getLatLng().lat, userMarker.getLatLng().lng, dLat, dLon);
+                    if (dist <= 30) { // 30m 이내일 때만 수집 가능
+                        userFilms += 2; // 먼지 수집 시 필름 2개 획득
+                        document.getElementById('film-count').innerText = userFilms;
+                        alert("✨ 시간의 먼지를 수집했습니다! (빛바랜 필름 +2 획득)");
+                        map.removeLayer(marker); // 지도에서 제거
+                    } else {
+                        alert("너무 멀리 있습니다! 먼지 조각 가까이 다가가세요. (30m 이내)");
+                    }
+                });
+
+                dustMarkers.push(marker);
+            });
+        }
+
+        // GPS 실시간 추적 및 이동 거리 계산 (걸음수 환산)
+        let lastLat = null;
+        let lastLon = null;
+
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
                 function(position) {
                     var lat = position.coords.latitude;
                     var lon = position.coords.longitude;
 
-                    // 최초 접속 시 내 위치 바로 앞(약 30m 북쪽)에 테스트용 타임캡슐 자동 생성
                     if (isFirstGPS) {
                         isFirstGPS = false;
-                        targetLat = lat + 0.0003; // 약 30m 위
+                        targetLat = lat + 0.0005; // 약 50m 위 타임캡슐
                         targetLon = lon;
 
-                        // 타임캡슐 마커 생성
                         capsuleMarker = L.marker([targetLat, targetLon]).addTo(map).bindPopup("<b>테스트용 타임캡슐</b>").openPopup();
-                        
-                        // 내 마커 생성
                         userMarker = L.marker([lat, lon]).addTo(map).bindPopup("<b>내 위치</b>");
+
+                        // 주변에 시간의 먼지 스폰
+                        spawnDustObjects(lat, lon);
+
+                        lastLat = lat;
+                        lastLon = lon;
+                    } else {
+                        // 이전 위치와의 이동 거리 계산
+                        let movedMeters = getDistanceFromLatLonInMeters(lastLat, lastLon, lat, lon);
+                        if (movedMeters > 2) { // 2미터 이상 튈 때만 반영
+                            accumulatedMeters += movedMeters;
+                            lastLat = lat;
+                            lastLon = lon;
+
+                            // 대략 1걸음 = 0.7미터로 환산
+                            let newSteps = Math.floor(accumulatedMeters / 0.7);
+                            if (newSteps > totalSteps) {
+                                let addedSteps = newSteps - totalSteps;
+                                totalSteps = newSteps;
+                                document.getElementById('step-count').innerText = totalSteps;
+
+                                // 1000걸음당 필름 1개 자동 충전 로직 체크
+                                // (테스트를 위해 편하게 보시려면 아래 조건을 조절하셔도 됩니다)
+                                if (totalSteps % 1000 === 0) {
+                                    userFilms += 1;
+                                    document.getElementById('film-count').innerText = userFilms;
+                                    alert("👣 1000걸음 달성! 보상으로 빛바랜 필름 1개가 충전되었습니다!");
+                                }
+                            }
+                        }
                     }
 
                     userMarker.setLatLng([lat, lon]);
-                    map.setView([lat, lon], 17); // 조금 더 확대해서 보기 좋게
+                    map.setView([lat, lon], 17);
 
                     var distance = getDistanceFromLatLonInMeters(lat, lon, targetLat, targetLon);
                     let banner = document.getElementById('guide-banner');
@@ -163,7 +237,7 @@
                             document.getElementById('discovery-modal').style.display = 'block';
                         }
                     } else {
-                        banner.innerText = `타임캡슐까지의 거리: 약 ${Math.round(distance)}m 남았습니다. 조금만 걸어보세요!`;
+                        banner.innerText = `타임캡슐까지 거리: 약 ${Math.round(distance)}m | 파란색 먼지를 터치해 필름을 모아보세요!`;
                     }
                 },
                 function(error) { 
@@ -175,9 +249,8 @@
         }
 
         function startMission() {
-            let userFilms = parseInt(document.getElementById('film-count').innerText);
             if (userFilms < 10) {
-                alert("빛바랜 필름이 부족합니다! (필요: 10개)");
+                alert("빛바랜 필름이 부족합니다! (필요: 10개)\n길가에 흩어진 파란색 '시간의 먼지'를 터치해 모아보세요.");
                 return;
             }
             userFilms -= 10;
