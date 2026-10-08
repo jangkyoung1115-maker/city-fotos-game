@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 황금빛 도감 연동 버전</title>
+    <title>타임슬립 탐험대</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -12,12 +12,15 @@
         /* 상단 UI 패널 */
         .top-panel {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95); padding: 10px 20px; border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; gap: 12px; font-weight: bold; font-size: 13px;
+            background: rgba(255, 255, 255, 0.95); padding: 10px 18px; border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 12px;
         }
         .resource-badge { color: #ff5722; }
         .step-badge { color: #4caf50; }
-        .album-btn { background: #3f51b5; color: white; border: none; padding: 6px 12px; border-radius: 15px; cursor: pointer; font-size: 12px; }
+        .action-btn { background: #3f51b5; color: white; border: none; padding: 6px 12px; border-radius: 15px; cursor: pointer; font-size: 11px; }
+        
+        /* 기본 상태에서는 관리자 버튼 숨김 */
+        .admin-btn { background: #e91e63; color: white; display: none; }
 
         /* 하단 가이드 배너 */
         .guide-banner {
@@ -30,7 +33,7 @@
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            z-index: 2000; text-align: center; width: 85%; max-width: 340px; box-sizing: border-box;
+            z-index: 2000; text-align: center; width: 85%; max-width: 360px; box-sizing: border-box;
         }
         .modal h3 { margin-top: 0; color: #333; }
         .btn {
@@ -38,8 +41,12 @@
             border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px;
         }
         .btn-secondary { background: #ccc; color: #333; }
+        .btn-danger { background: #f44336; color: white; padding: 6px 10px; font-size: 11px; margin-top: 0; width: auto; }
 
-        /* 먼지 닦기 미니게임 박스 */
+        .form-input {
+            width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px;
+        }
+
         #scratch-box {
             width: 100%; height: 150px; background: #ddd; border-radius: 10px;
             position: relative; overflow: hidden; margin: 15px 0; display: flex; align-items: center; justify-content: center;
@@ -50,19 +57,20 @@
             display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer;
         }
 
-        /* 사진첩 도감 모달 */
-        #album-modal { max-height: 80vh; overflow-y: auto; text-align: left; }
-        .album-item { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px; align-items: center; }
-        .album-item img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; }
+        .scroll-list { max-height: 50vh; overflow-y: auto; text-align: left; margin-bottom: 10px; }
+        .list-item { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px; align-items: center; justify-content: space-between; }
+        .list-item img { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; }
     </style>
 </head>
 <body>
 
     <!-- 상단 상태바 -->
     <div class="top-panel">
-        <span>🎞️ <span id="film-count" class="resource-badge">15</span>개</span>
-        <span>👣 <span id="step-count" class="step-badge">0</span>걸음</span>
-        <button class="album-btn" onclick="openAlbum()">내 사진첩</button>
+        <span>🎞️ <span id="film-count" class="resource-badge">15</span></span>
+        <span>👣 <span id="step-count" class="step-badge">0</span></span>
+        <button class="action-btn" onclick="openAlbum()">사진첩</button>
+        <!-- 관리자 모드 버튼 (비밀 주소 접속 시에만 표시됨) -->
+        <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">관리자 모드</button>
     </div>
 
     <!-- 하단 가이드 배너 -->
@@ -75,8 +83,8 @@
 
     <!-- 1. 타임캡슐 발견 팝업 -->
     <div id="discovery-modal" class="modal">
-        <h3>⏳ 타임캡슐 발견!</h3>
-        <p>추억의 옛 풍경이 담긴 타임캡슐입니다.</p>
+        <h3 id="discovery-title">⏳ 타임캡슐 발견!</h3>
+        <p id="discovery-desc">추억의 옛 풍경이 담긴 타임캡슐입니다.</p>
         <p style="font-size: 13px; color: #666;">필요 자원: 빛바랜 필름 10개</p>
         <button class="btn" onclick="startMission()">필름 10개 소모하고 개봉하기</button>
         <button class="btn btn-secondary" onclick="closeModal('discovery-modal')">나중에 하기</button>
@@ -87,7 +95,7 @@
         <h3>🧹 사진 복원 미니게임</h3>
         <p style="font-size: 13px; color: #666;">화면을 문질러 세월의 먼지를 닦아내세요!</p>
         <div id="scratch-box" ontouchmove="wipeDust()" onclick="wipeDust()">
-            <img src="https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400" id="target-photo" alt="옛 사진">
+            <img src="" id="target-photo" alt="옛 사진">
             <div id="overlay-text" class="scratch-overlay">여기를 터치해 먼지 닦기!</div>
         </div>
         <button id="complete-btn" class="btn btn-secondary" disabled onclick="savePhoto()">사진첩에 저장하기</button>
@@ -96,12 +104,38 @@
     <!-- 3. 내 사진첩 (도감) 모달 -->
     <div id="album-modal" class="modal">
         <h3>📖 나의 타임슬립 앨범</h3>
-        <div id="album-list"></div>
+        <div id="album-list" class="scroll-list"></div>
         <button class="btn btn-secondary" onclick="closeModal('album-modal')">닫기</button>
+    </div>
+
+    <!-- 4. 관리자 모드 모달 -->
+    <div id="admin-modal" class="modal" style="max-width: 400px;">
+        <h3>🛠️ 타임캡슐 관리자 모드</h3>
+        <p style="font-size: 12px; color: #666; margin-bottom: 10px;">현재 내 GPS 위치에 새로운 타임캡슐을 등록합니다.</p>
+        
+        <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 양평 옛 장터 풍경)">
+        <input type="text" id="admin-url" class="form-input" placeholder="이미지 URL 주소">
+        <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
+        
+        <button class="btn" style="background:#4caf50;" onclick="addNewCapsuleAtCurrentGPS()">📍 현재 내 위치에 캡슐 등록</button>
+        
+        <hr style="margin: 15px 0; border:0; border-top:1px solid #eee;">
+        <h4 style="margin: 5px 0; font-size: 13px; text-align: left;">등록된 캡슐 목록</h4>
+        <div id="admin-capsule-list" class="scroll-list" style="max-height: 150px;"></div>
+
+        <button class="btn btn-secondary" onclick="closeModal('admin-modal')">닫기</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // 접속 주소에 ?admin=true 가 포함되어 있는지 확인하여 관리자 버튼 노출
+        window.addEventListener('DOMContentLoaded', (event) => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('admin') === 'true') {
+                document.getElementById('admin-mode-btn').style.display = 'inline-block';
+            }
+        });
+
         var map = L.map('map').setView([37.5665, 126.9780], 15);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -110,22 +144,40 @@
         }).addTo(map);
 
         var userMarker = null;
-        var capsuleMarker = null;
+        var capsuleMarkers = {};
         var dustMarkers = [];
         
-        var targetLat = null;
-        var targetLon = null;
-        let hasDiscovered = false;
-        let isFirstGPS = true;
+        let currentLat = 37.5665;
+        let currentLon = 126.9780;
+        let activeCapsule = null;
 
         let totalSteps = 0;
         let accumulatedMeters = 0;
         let userFilms = 15;
+        let isFirstGPS = true;
 
-        // 이미 수집된 사진인지 확인하는 함수
-        function isCapsuleCollected() {
-            let album = JSON.parse(localStorage.getItem('gwangmyeong_album') || '[]');
-            return album.some(item => item.title === "추억의 옛 풍경 타임캡슐");
+        const defaultCapsules = [
+            {
+                id: "capsule_default_1",
+                title: "1980년대 광명시장 전경",
+                lat: 37.4784,
+                lon: 126.8646,
+                url: "https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400",
+                desc: "활기 넘쳤던 옛 광명시장 입구의 풍경입니다."
+            }
+        ];
+
+        function getCapsules() {
+            let saved = localStorage.getItem('gwangmyeong_capsules');
+            if (!saved) {
+                localStorage.setItem('gwangmyeong_capsules', JSON.stringify(defaultCapsules));
+                return defaultCapsules;
+            }
+            return JSON.parse(saved);
+        }
+
+        function getAlbum() {
+            return JSON.parse(localStorage.getItem('gwangmyeong_album') || '[]');
         }
 
         function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -139,7 +191,35 @@
             return R * c;
         }
 
-        // 시간의 먼지 오브젝트 생성
+        function renderCapsuleMarkers() {
+            for (let id in capsuleMarkers) {
+                map.removeLayer(capsuleMarkers[id]);
+            }
+            capsuleMarkers = {};
+
+            let capsules = getCapsules();
+            let album = getAlbum();
+
+            capsules.forEach(cap => {
+                let collected = album.some(item => item.title === cap.title);
+                let capsuleBg = collected ? 'linear-gradient(135deg, #ffd700, #ff8f00)' : 'linear-gradient(135deg, #9c27b0, #673ab7)';
+                let capsuleShadow = collected ? 'rgba(255,215,0,0.9)' : 'rgba(156,39,176,0.9)';
+                let capsuleText = collected ? '🏆' : '⏳';
+
+                let capsuleIcon = L.divIcon({
+                    className: 'custom-capsule',
+                    html: `<div style="background:${capsuleBg}; width:36px; height:36px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px ${capsuleShadow}; display:flex; align-items:center; justify-content:center; color:white; font-size:16px; font-weight:bold;">${capsuleText}</div>`,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                });
+
+                let marker = L.marker([cap.lat, cap.lon], {icon: capsuleIcon}).addTo(map);
+                marker.bindPopup(`<b>${cap.title}</b><br>${collected ? '수집 완료됨' : '미발견 타임캡슐'}`);
+                
+                capsuleMarkers[cap.id] = { marker: marker, data: cap, collected: collected };
+            });
+        }
+
         function spawnDustObjects(centerLat, centerLon) {
             let offsets = [
                 {dLat: 0.0003, dLon: 0.0003},
@@ -161,7 +241,7 @@
                 marker.bindPopup("<b>✨ 시간의 먼지 조각</b><br>터치해서 필름을 수집하세요!");
                 
                 marker.on('click', function() {
-                    let dist = getDistanceFromLatLonInMeters(userMarker.getLatLng().lat, userMarker.getLatLng().lng, dLat, dLon);
+                    let dist = getDistanceFromLatLonInMeters(currentLat, currentLon, dLat, dLon);
                     if (dist <= 30) {
                         userFilms += 2;
                         document.getElementById('film-count').innerText = userFilms;
@@ -182,31 +262,12 @@
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
                 function(position) {
-                    var lat = position.coords.latitude;
-                    var lon = position.coords.longitude;
+                    currentLat = position.coords.latitude;
+                    currentLon = position.coords.longitude;
 
                     if (isFirstGPS) {
                         isFirstGPS = false;
-                        targetLat = lat + 0.0005; // 약 50m 위 타임캡슐
-                        targetLon = lon;
-
-                        // 수집 여부에 따라 아이콘 색상 변경 (이미 수집했으면 황금색, 아니면 보라색)
-                        let collected = isCapsuleCollected();
-                        let capsuleBg = collected ? 'linear-gradient(135deg, #ffd700, #ff8f00)' : 'linear-gradient(135deg, #9c27b0, #673ab7)';
-                        let capsuleShadow = collected ? 'rgba(255,215,0,0.9)' : 'rgba(156,39,176,0.9)';
-                        let capsuleText = collected ? '🏆' : '⏳';
-
-                        let capsuleIcon = L.divIcon({
-                            className: 'custom-capsule',
-                            html: `<div style="background:${capsuleBg}; width:36px; height:36px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px ${capsuleShadow}; display:flex; align-items:center; justify-content:center; color:white; font-size:16px; font-weight:bold;">${capsuleText}</div>`,
-                            iconSize: [36, 36],
-                            iconAnchor: [18, 18]
-                        });
-
-                        let popupText = collected ? "<b>👑 [수집 완료] 타임캡슐</b>" : "<b>🎁 [테스트] 1980년대 타임캡슐</b>";
-                        capsuleMarker = L.marker([targetLat, targetLon], {icon: capsuleIcon}).addTo(map).bindPopup(popupText).openPopup();
                         
-                        // 내 위치 전용 아이콘 (초록색 커서로 변경하여 파란 먼지와 명확히 구분)
                         let userIcon = L.divIcon({
                             className: 'custom-user',
                             html: '<div style="background:#00c853; width:22px; height:22px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,200,83,0.8);"></div>',
@@ -214,59 +275,71 @@
                             iconAnchor: [11, 11]
                         });
 
-                        userMarker = L.marker([lat, lon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
+                        userMarker = L.marker([currentLat, currentLon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
 
-                        spawnDustObjects(lat, lon);
+                        renderCapsuleMarkers();
+                        spawnDustObjects(currentLat, currentLon);
 
-                        lastLat = lat;
-                        lastLon = lon;
+                        lastLat = currentLat;
+                        lastLon = currentLon;
                     } else {
-                        let movedMeters = getDistanceFromLatLonInMeters(lastLat, lastLon, lat, lon);
+                        let movedMeters = getDistanceFromLatLonInMeters(lastLat, lastLon, currentLat, currentLon);
                         if (movedMeters > 2) {
                             accumulatedMeters += movedMeters;
-                            lastLat = lat;
-                            lastLon = lon;
+                            lastLat = currentLat;
+                            lastLon = currentLon;
 
                             let newSteps = Math.floor(accumulatedMeters / 0.7);
                             if (newSteps > totalSteps) {
-                                let addedSteps = newSteps - totalSteps;
                                 totalSteps = newSteps;
                                 document.getElementById('step-count').innerText = totalSteps;
 
                                 if (totalSteps % 1000 === 0) {
                                     userFilms += 1;
                                     document.getElementById('film-count').innerText = userFilms;
-                                    alert("👣 1000걸음 달성! 보상으로 빛바랜 필름 1개가 충전되었습니다!");
+                                    alert("👣 1000걸음 달성! 보상으로 필름 1개가 충전되었습니다!");
                                 }
                             }
                         }
                     }
 
-                    userMarker.setLatLng([lat, lon]);
-                    map.setView([lat, lon], 17);
+                    userMarker.setLatLng([currentLat, currentLon]);
+                    map.setView([currentLat, currentLon], 16);
 
-                    var distance = getDistanceFromLatLonInMeters(lat, lon, targetLat, targetLon);
+                    let capsules = getCapsules();
+                    let album = getAlbum();
+                    let nearestCapsule = null;
+                    let minDistance = 999999;
+
+                    capsules.forEach(cap => {
+                        let dist = getDistanceFromLatLonInMeters(currentLat, currentLon, cap.lat, cap.lon);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            nearestCapsule = cap;
+                        }
+                    });
+
                     let banner = document.getElementById('guide-banner');
-
-                    if (distance <= 50 && distance > 10) {
-                        banner.innerText = `✨ 근처에 타임캡슐이 숨겨져 있습니다! (약 ${Math.round(distance)}m)`;
-                    } else if (distance <= 10) {
-                        if (!isCapsuleCollected()) {
-                            banner.innerText = "🎯 타임캡슐 발견 지점에 도달했습니다!";
-                            if (!hasDiscovered) {
-                                hasDiscovered = true;
+                    if (nearestCapsule) {
+                        let isCollected = album.some(item => item.title === nearestCapsule.title);
+                        if (minDistance <= 10 && !isCollected) {
+                            banner.innerText = `🎯 [${nearestCapsule.title}] 발견 지점 도달!`;
+                            if (!activeCapsule || activeCapsule.id !== nearestCapsule.id) {
+                                activeCapsule = nearestCapsule;
+                                document.getElementById('discovery-title').innerText = `⏳ ${nearestCapsule.title}`;
+                                document.getElementById('discovery-desc').innerText = nearestCapsule.desc;
                                 document.getElementById('discovery-modal').style.display = 'block';
                             }
+                        } else if (minDistance <= 50) {
+                            banner.innerText = `✨ 근처에 타임캡슐(${nearestCapsule.title})이 있습니다! (${Math.round(minDistance)}m)`;
                         } else {
-                            banner.innerText = "🏆 이미 수집을 완료한 황금 타임캡슐 지점입니다!";
+                            banner.innerText = `가장 가까운 타임캡슐까지 거리: 약 ${Math.round(minDistance)}m`;
                         }
-                    } else {
-                        banner.innerText = `타임캡슐까지 거리: 약 ${Math.round(distance)}m | 파란색 먼지를 터치해 필름을 모아보세요!`;
                     }
                 },
                 function(error) { 
                     console.error("GPS 오류", error);
-                    document.getElementById('guide-banner').innerText = "⚠️ GPS 위치를 가져올 수 없습니다. 위치 권한을 확인해주세요.";
+                    document.getElementById('guide-banner').innerText = "⚠️ GPS 위치를 가져올 수 없습니다.";
                 },
                 { enableHighAccuracy: true }
             );
@@ -281,6 +354,13 @@
             document.getElementById('film-count').innerText = userFilms;
             
             closeModal('discovery-modal');
+            
+            document.getElementById('target-photo').src = activeCapsule.url;
+            document.getElementById('target-photo').style.filter = 'blur(5px)';
+            document.getElementById('overlay-text').style.display = 'flex';
+            document.getElementById('complete-btn').disabled = true;
+            document.getElementById('complete-btn').className = 'btn btn-secondary';
+
             document.getElementById('mission-modal').style.display = 'block';
         }
 
@@ -295,27 +375,18 @@
 
         function savePhoto() {
             let photoData = {
-                title: "추억의 옛 풍경 타임캡슐",
+                title: activeCapsule.title,
                 date: new Date().toLocaleDateString(),
-                url: "https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400"
+                url: activeCapsule.url,
+                desc: activeCapsule.desc
             };
 
-            let album = JSON.parse(localStorage.getItem('gwangmyeong_album') || '[]');
+            let album = getAlbum();
             if (!album.some(item => item.title === photoData.title)) {
                 album.push(photoData);
                 localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
                 alert("🎉 성공적으로 사진을 도감에 수집했습니다!");
-
-                // 🌟 수집 성공 시 지도 위의 타임캡슐 아이콘을 즉시 황금색으로 변경!
-                let goldIcon = L.divIcon({
-                    className: 'custom-capsule',
-                    html: '<div style="background:linear-gradient(135deg, #ffd700, #ff8f00); width:36px; height:36px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(255,215,0,0.9); display:flex; align-items:center; justify-content:center; color:white; font-size:16px; font-weight:bold;">🏆</div>',
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 18]
-                });
-                capsuleMarker.setIcon(goldIcon);
-                capsuleMarker.bindPopup("<b>👑 [수집 완료] 타임캡슐 (황금빛 보관됨)</b>");
-
+                renderCapsuleMarkers();
             } else {
                 alert("이미 도감에 등록된 사진입니다!");
             }
@@ -323,22 +394,88 @@
             closeModal('mission-modal');
         }
 
+        function openAdminModal() {
+            let listDiv = document.getElementById('admin-capsule-list');
+            listDiv.innerHTML = "";
+            let capsules = getCapsules();
+
+            if (capsules.length === 0) {
+                listDiv.innerHTML = "<p style='color:#888; font-size:12px;'>등록된 캡슐이 없습니다.</p>";
+            } else {
+                capsules.forEach((cap) => {
+                    listDiv.innerHTML += `
+                        <div class="list-item">
+                            <img src="${cap.url}" alt="미리보기">
+                            <div style="flex-grow:1; margin-left:8px;">
+                                <div style="font-weight:bold; font-size:12px;">${cap.title}</div>
+                                <div style="font-size:10px; color:#888;">위도: ${cap.lat.toFixed(4)}, 경도: ${cap.lon.toFixed(4)}</div>
+                            </div>
+                            <button class="btn btn-danger" onclick="deleteCapsule('${cap.id}')">삭제</button>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('admin-modal').style.display = 'block';
+        }
+
+        function addNewCapsuleAtCurrentGPS() {
+            let title = document.getElementById('admin-title').value.trim();
+            let url = document.getElementById('admin-url').value.trim();
+            let desc = document.getElementById('admin-desc').value.trim();
+
+            if (!title || !url) {
+                alert("제목과 이미지 URL은 필수 입력 항목입니다!");
+                return;
+            }
+
+            let capsules = getCapsules();
+            let newCapsule = {
+                id: "capsule_" + Date.now(),
+                title: title,
+                lat: currentLat,
+                lon: currentLon,
+                url: url,
+                desc: desc || "새로 발굴된 역사 타임캡슐입니다."
+            };
+
+            capsules.push(newCapsule);
+            localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
+
+            alert("✨ 현재 내 위치에 새로운 타임캡슐이 성공적으로 등록되었습니다!");
+            document.getElementById('admin-title').value = "";
+            document.getElementById('admin-url').value = "";
+            document.getElementById('admin-desc').value = "";
+
+            closeModal('admin-modal');
+            renderCapsuleMarkers();
+        }
+
+        function deleteCapsule(id) {
+            if (confirm("정말 이 타임캡슐을 삭제하시겠습니까?")) {
+                let capsules = getCapsules();
+                capsules = capsules.filter(c => c.id !== id);
+                localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
+                openAdminModal();
+                renderCapsuleMarkers();
+            }
+        }
+
         function openAlbum() {
             let albumList = document.getElementById('album-list');
             albumList.innerHTML = "";
-            
-            let album = JSON.parse(localStorage.getItem('gwangmyeong_album') || '[]');
+            let album = getAlbum();
             
             if (album.length === 0) {
                 albumList.innerHTML = "<p style='color:#888; text-align:center;'>아직 수집한 사진이 없습니다.<br>타임캡슐을 찾아보세요!</p>";
             } else {
                 album.forEach(item => {
                     albumList.innerHTML += `
-                        <div class="album-item">
+                        <div class="list-item">
                             <img src="${item.url}" alt="사진">
                             <div>
-                                <div style="font-weight:bold; font-size:14px;">${item.title}</div>
-                                <div style="font-size:11px; color:#888;">획득일: ${item.date}</div>
+                                <div style="font-weight:bold; font-size:13px;">${item.title}</div>
+                                <div style="font-size:11px; color:#888;">${item.desc}</div>
+                                <div style="font-size:10px; color:#aaa;">획득일: ${item.date}</div>
                             </div>
                         </div>
                     `;
