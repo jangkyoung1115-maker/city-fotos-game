@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>광명시 타임슬립 탐험대</title>
-    <!-- 카카오맵 API (https 명시 및 autoload=false 적용) -->
-    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=8157177d4a1cb67b5f645d94f77822a5&autoload=false"></script>
+    <!-- Leaflet 지도 라이브러리 CSS (도메인 등록 필요 없음) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
         #map { width: 100%; height: 100vh; }
@@ -14,7 +14,7 @@
         .top-panel {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.95); padding: 10px 20px; border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 10; display: flex; align-items: center; gap: 15px; font-weight: bold; font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; gap: 15px; font-weight: bold; font-size: 14px;
         }
         .resource-badge { color: #ff5722; }
         .album-btn { background: #3f51b5; color: white; border: none; padding: 6px 12px; border-radius: 15px; cursor: pointer; font-size: 12px; }
@@ -23,7 +23,7 @@
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            z-index: 100; text-align: center; width: 85%; max-width: 340px; box-sizing: border-box;
+            z-index: 2000; text-align: center; width: 85%; max-width: 340px; box-sizing: border-box;
         }
         .modal h3 { margin-top: 0; color: #333; }
         .btn {
@@ -57,7 +57,7 @@
         <button class="album-btn" onclick="openAlbum()">내 사진첩</button>
     </div>
 
-    <!-- 카카오맵 영역 -->
+    <!-- 지도 영역 -->
     <div id="map"></div>
 
     <!-- 1. 타임캡슐 발견 팝업 -->
@@ -87,67 +87,57 @@
         <button class="btn btn-secondary" onclick="closeModal('album-modal')">닫기</button>
     </div>
 
+    <!-- Leaflet 지도 라이브러리 JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 카카오맵 SDK 로드 대기 함수 적용
-        kakao.maps.load(function() {
-            var container = document.getElementById('map');
-            var options = {
-                center: new kakao.maps.LatLng(37.4784, 126.8646),
-                level: 3
-            };
-            var map = new kakao.maps.Map(container, options);
+        // 1. 지도 초기화 (광명시청 기준)
+        var map = L.map('map').setView([37.4784, 126.8646], 15);
 
-            // 유저 커서(마커)
-            var userMarker = new kakao.maps.Marker({
-                position: new kakao.maps.LatLng(37.4784, 126.8646)
-            });
-            userMarker.setMap(map);
+        // 오픈스트리트맵 타일 적용 (키 필요 없음)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
-            // 타임캡슐 스팟 설정 (테스트용 좌표: 광명시청 인근)
-            var targetLat = 37.4784;
-            var targetLon = 126.8646;
-            var capsuleMarker = new kakao.maps.Marker({
-                position: new kakao.maps.LatLng(targetLat, targetLon)
-            });
-            capsuleMarker.setMap(map);
+        // 유저 마커 생성
+        var userMarker = L.marker([37.4784, 126.8646]).addTo(map).bindId = 'user';
 
-            // 유저 재화 (필름)
-            let userFilms = 5;
+        // 타임캡슐 스팟 설정 (광명시청 인근)
+        var targetLat = 37.4784;
+        var targetLon = 126.8646;
+        var capsuleMarker = L.marker([targetLat, targetLon]).addTo(map).bindPopup("<b>타임캡슐 스팟</b>");
 
-            // 거리 계산 함수 (미터 단위)
-            function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-                var R = 6371000;
-                var dLat = (lat2 - lat1) * (Math.PI / 180);
-                var dLon = (lon2 - lon1) * (Math.PI / 180);
-                var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c;
-            }
+        // 두 좌표 간 거리 계산 함수 (미터 단위)
+        function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+            var R = 6371000;
+            var dLat = (lat2 - lat1) * (Math.PI / 180);
+            var dLon = (lon2 - lon1) * (Math.PI / 180);
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
 
-            // GPS 실시간 추적
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(
-                    function(position) {
-                        var lat = position.coords.latitude;
-                        var lon = position.coords.longitude;
-                        var currentPos = new kakao.maps.LatLng(lat, lon);
+        // GPS 실시간 추적
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(
+                function(position) {
+                    var lat = position.coords.latitude;
+                    var lon = position.coords.longitude;
 
-                        userMarker.setPosition(currentPos);
-                        map.setCenter(currentPos);
+                    userMarker.setLatLng([lat, lon]);
+                    map.setView([lat, lon], map.getZoom());
 
-                        // 20미터 이내 접근 시 팝업 오픈
-                        var distance = getDistanceFromLatLonInMeters(lat, lon, targetLat, targetLon);
-                        if (distance <= 20) {
-                            document.getElementById('discovery-modal').style.display = 'block';
-                        }
-                    },
-                    function(error) { console.error("GPS 오류", error); },
-                    { enableHighAccuracy: true }
-                );
-            }
-        });
+                    var distance = getDistanceFromLatLonInMeters(lat, lon, targetLat, targetLon);
+                    if (distance <= 20) {
+                        document.getElementById('discovery-modal').style.display = 'block';
+                    }
+                },
+                function(error) { console.error("GPS 오류", error); },
+                { enableHighAccuracy: true }
+            );
+        }
 
         // 캡슐 열기 버튼 클릭 시
         function startMission() {
