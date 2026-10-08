@@ -3,12 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대</title>
+    <title>타임슬립 탐험대 - 지도 지정 & 파일 업로드 관리자</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
         #map { width: 100%; height: 100vh; }
         
+        /* 지도 중앙 고정 십자선 (관리자 모드 전용 핀포인트용) */
+        #map-crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 28px; z-index: 999; pointer-events: none; display: none; text-shadow: 0 0 5px white;
+        }
+
         /* 상단 UI 패널 */
         .top-panel {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
@@ -18,8 +24,6 @@
         .resource-badge { color: #ff5722; }
         .step-badge { color: #4caf50; }
         .action-btn { background: #3f51b5; color: white; border: none; padding: 6px 12px; border-radius: 15px; cursor: pointer; font-size: 11px; }
-        
-        /* 기본 상태에서는 관리자 버튼 숨김 */
         .admin-btn { background: #e91e63; color: white; display: none; }
 
         /* 하단 가이드 배너 */
@@ -57,7 +61,7 @@
             display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer;
         }
 
-        .scroll-list { max-height: 50vh; overflow-y: auto; text-align: left; margin-bottom: 10px; }
+        .scroll-list { max-height: 40vh; overflow-y: auto; text-align: left; margin-bottom: 10px; }
         .list-item { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px; align-items: center; justify-content: space-between; }
         .list-item img { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; }
     </style>
@@ -69,9 +73,11 @@
         <span>🎞️ <span id="film-count" class="resource-badge">15</span></span>
         <span>👣 <span id="step-count" class="step-badge">0</span></span>
         <button class="action-btn" onclick="openAlbum()">사진첩</button>
-        <!-- 관리자 모드 버튼 (비밀 주소 접속 시에만 표시됨) -->
         <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">관리자 모드</button>
     </div>
+
+    <!-- 지도 중앙 십자선 (관리자 모드 전용) -->
+    <div id="map-crosshair">🎯</div>
 
     <!-- 하단 가이드 배너 -->
     <div id="guide-banner" class="guide-banner">
@@ -111,24 +117,28 @@
     <!-- 4. 관리자 모드 모달 -->
     <div id="admin-modal" class="modal" style="max-width: 400px;">
         <h3>🛠️ 타임캡슐 관리자 모드</h3>
-        <p style="font-size: 12px; color: #666; margin-bottom: 10px;">현재 내 GPS 위치에 새로운 타임캡슐을 등록합니다.</p>
+        <p style="font-size: 11px; color: #666; margin-bottom: 8px;">지도를 움직여 <b>화면 중앙(🎯)</b>에 원하는 위치를 맞춘 뒤 아래 정보를 입력하세요!</p>
         
-        <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 양평 옛 장터 풍경)">
-        <input type="text" id="admin-url" class="form-input" placeholder="이미지 URL 주소">
+        <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 양평 옛 다리)">
+        
+        <div style="text-align: left; font-size: 12px; margin: 5px 0; color: #444;">
+            <label>사진 파일 선택:</label>
+            <input type="file" id="admin-file" accept="image/*" class="form-input" style="margin-top: 3px;">
+        </div>
+
         <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
         
-        <button class="btn" style="background:#4caf50;" onclick="addNewCapsuleAtCurrentGPS()">📍 현재 내 위치에 캡슐 등록</button>
+        <button class="btn" style="background:#4caf50;" onclick="addNewCapsuleAtCenter()">🎯 지도 중앙에 캡슐 등록</button>
         
-        <hr style="margin: 15px 0; border:0; border-top:1px solid #eee;">
-        <h4 style="margin: 5px 0; font-size: 13px; text-align: left;">등록된 캡슐 목록</h4>
-        <div id="admin-capsule-list" class="scroll-list" style="max-height: 150px;"></div>
+        <hr style="margin: 12px 0; border:0; border-top:1px solid #eee;">
+        <h4 style="margin: 3px 0; font-size: 12px; text-align: left;">등록된 캡슐 목록</h4>
+        <div id="admin-capsule-list" class="scroll-list" style="max-height: 120px;"></div>
 
         <button class="btn btn-secondary" onclick="closeModal('admin-modal')">닫기</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 접속 주소에 ?admin=true 가 포함되어 있는지 확인하여 관리자 버튼 노출
         window.addEventListener('DOMContentLoaded', (event) => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('admin') === 'true') {
@@ -233,8 +243,9 @@
 
                 let dustIcon = L.divIcon({
                     className: 'custom-dust',
-                    html: '<div style="background:#2196f3; width:22px; height:22px; border-radius:50%; border:2px solid white; box-shadow:0 0 8px rgba(33,150,243,0.8); display:flex; align-items:center; justify-content:center; color:white; font-size:11px;">✨</div>',
-                    iconSize: [22, 22]
+                    html: '<div style="background:#2196f3; width:12px; height:12px; border-radius:50%; border:1.5px solid white; box-shadow:0 0 5px rgba(33,150,243,0.8); display:flex; align-items:center; justify-content:center; color:white; font-size:8px;">✨</div>',
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6]
                 });
 
                 let marker = L.marker([dLat, dLon], {icon: dustIcon}).addTo(map);
@@ -304,7 +315,9 @@
                     }
 
                     userMarker.setLatLng([currentLat, currentLon]);
-                    map.setView([currentLat, currentLon], 16);
+                    if (!window.isAdminOpen) { // 관리자 모드 중에는 지도가 내 위치로 강제 이동되지 않도록 방어
+                        map.setView([currentLat, currentLon], 16);
+                    }
 
                     let capsules = getCapsules();
                     let album = getAlbum();
@@ -394,21 +407,26 @@
             closeModal('mission-modal');
         }
 
+        // 관리자 모드 열기
+        window.isAdminOpen = false;
         function openAdminModal() {
+            window.isAdminOpen = true;
+            document.getElementById('map-crosshair').style.display = 'block'; // 지도 중앙 십자선 표시
+
             let listDiv = document.getElementById('admin-capsule-list');
             listDiv.innerHTML = "";
             let capsules = getCapsules();
 
             if (capsules.length === 0) {
-                listDiv.innerHTML = "<p style='color:#888; font-size:12px;'>등록된 캡슐이 없습니다.</p>";
+                listDiv.innerHTML = "<p style='color:#888; font-size:11px;'>등록된 캡슐이 없습니다.</p>";
             } else {
                 capsules.forEach((cap) => {
                     listDiv.innerHTML += `
                         <div class="list-item">
                             <img src="${cap.url}" alt="미리보기">
                             <div style="flex-grow:1; margin-left:8px;">
-                                <div style="font-weight:bold; font-size:12px;">${cap.title}</div>
-                                <div style="font-size:10px; color:#888;">위도: ${cap.lat.toFixed(4)}, 경도: ${cap.lon.toFixed(4)}</div>
+                                <div style="font-weight:bold; font-size:11px;">${cap.title}</div>
+                                <div style="font-size:9px; color:#888;">위도: ${cap.lat.toFixed(4)}, 경도: ${cap.lon.toFixed(4)}</div>
                             </div>
                             <button class="btn btn-danger" onclick="deleteCapsule('${cap.id}')">삭제</button>
                         </div>
@@ -418,36 +436,53 @@
             document.getElementById('admin-modal').style.display = 'block';
         }
 
-        function addNewCapsuleAtCurrentGPS() {
+        // 지도 중앙(십자선) 위치에 새 캡슐 등록 (파일 업로드 처리)
+        function addNewCapsuleAtCenter() {
             let title = document.getElementById('admin-title').value.trim();
-            let url = document.getElementById('admin-url').value.trim();
             let desc = document.getElementById('admin-desc').value.trim();
+            let fileInput = document.getElementById('admin-file');
 
-            if (!title || !url) {
-                alert("제목과 이미지 URL은 필수 입력 항목입니다!");
+            if (!title) {
+                alert("타임캡슐 제목을 입력해주세요!");
+                return;
+            }
+            if (fileInput.files.length === 0) {
+                alert("등록할 사진 파일을 선택해주세요!");
                 return;
             }
 
-            let capsules = getCapsules();
-            let newCapsule = {
-                id: "capsule_" + Date.now(),
-                title: title,
-                lat: currentLat,
-                lon: currentLon,
-                url: url,
-                desc: desc || "새로 발굴된 역사 타임캡슐입니다."
+            let file = fileInput.files[0];
+            let reader = new FileReader();
+
+            reader.onload = function(e) {
+                let base64Image = e.target.result; // 이미지를 텍스트(Base64)로 변환하여 안전하게 저장
+                
+                // 현재 지도 화면의 정중앙 좌표 계산
+                let centerLatLng = map.getCenter();
+
+                let capsules = getCapsules();
+                let newCapsule = {
+                    id: "capsule_" + Date.now(),
+                    title: title,
+                    lat: centerLatLng.lat,
+                    lon: centerLatLng.lng,
+                    url: base64Image,
+                    desc: desc || "새로 발굴된 역사 타임캡슐입니다."
+                };
+
+                capsules.push(newCapsule);
+                localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
+
+                alert("🎯 지정한 지도 위치에 타임캡슐이 성공적으로 등록되었습니다!");
+                document.getElementById('admin-title').value = "";
+                document.getElementById('admin-desc').value = "";
+                document.getElementById('admin-file').value = "";
+
+                closeModal('admin-modal');
+                renderCapsuleMarkers();
             };
 
-            capsules.push(newCapsule);
-            localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
-
-            alert("✨ 현재 내 위치에 새로운 타임캡슐이 성공적으로 등록되었습니다!");
-            document.getElementById('admin-title').value = "";
-            document.getElementById('admin-url').value = "";
-            document.getElementById('admin-desc').value = "";
-
-            closeModal('admin-modal');
-            renderCapsuleMarkers();
+            reader.readAsDataURL(file);
         }
 
         function deleteCapsule(id) {
@@ -473,9 +508,9 @@
                         <div class="list-item">
                             <img src="${item.url}" alt="사진">
                             <div>
-                                <div style="font-weight:bold; font-size:13px;">${item.title}</div>
-                                <div style="font-size:11px; color:#888;">${item.desc}</div>
-                                <div style="font-size:10px; color:#aaa;">획득일: ${item.date}</div>
+                                <div style="font-weight:bold; font-size:12px;">${item.title}</div>
+                                <div style="font-size:10px; color:#888;">${item.desc}</div>
+                                <div style="font-size:9px; color:#aaa;">획득일: ${item.date}</div>
                             </div>
                         </div>
                     `;
@@ -486,6 +521,10 @@
 
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
+            if (modalId === 'admin-modal') {
+                window.isAdminOpen = false;
+                document.getElementById('map-crosshair').style.display = 'none'; // 관리자창 닫으면 십자선 숨김
+            }
         }
     </script>
 </body>
