@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 직사각형 필름 조각 버전</title>
+    <title>타임슬립 탐험대 - 초소형 직사각형 필름 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -230,7 +230,7 @@
             });
         }
 
-        // 🌟 가로가 살짝 더 긴 아담한 직사각형 필름 조각 (가로 14px, 세로 9px)
+        // 🌟 초소형 직사각형 필름 조각 (가로 11px, 세로 7px)
         function spawnDustObjects(centerLat, centerLon) {
             let offsets = [
                 {dLat: 0.0003, dLon: 0.0003},
@@ -244,9 +244,9 @@
 
                 let filmIcon = L.divIcon({
                     className: 'custom-film',
-                    html: '<div style="background:#1e88e5; width:14px; height:9px; border-radius:2px; border:1.5px solid white; box-shadow:0 0 4px rgba(30,136,229,0.8); display:flex; align-items:center; justify-content:center; font-size:5px;">🎞️</div>',
-                    iconSize: [14, 9],
-                    iconAnchor: [7, 4.5]
+                    html: '<div style="background:#1e88e5; width:11px; height:7px; border-radius:1.5px; border:1px solid white; box-shadow:0 0 3px rgba(30,136,229,0.8); display:flex; align-items:center; justify-content:center; font-size:4px;">🎞️</div>',
+                    iconSize: [11, 7],
+                    iconAnchor: [5.5, 3.5]
                 });
 
                 let marker = L.marker([dLat, dLon], {icon: filmIcon}).addTo(map);
