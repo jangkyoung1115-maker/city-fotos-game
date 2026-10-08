@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 안정화 버전</title>
+    <title>타임슬립 탐험대 - 사진 다운로드 기능 추가</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -58,7 +58,7 @@
         }
 
         .scroll-list { max-height: 45vh; overflow-y: auto; text-align: left; margin-bottom: 10px; }
-        .list-item { display: flex; gap: 8px; margin-bottom: 6px; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; align-items: center; justify-content: space-between; }
+        .list-item { display: flex; gap: 8px; margin-bottom: 6px; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; align-items: center; justify-content: space-between; cursor: pointer; }
         .list-item img { width: 35px; height: 35px; border-radius: 4px; object-fit: cover; }
     </style>
 </head>
@@ -104,11 +104,26 @@
     <!-- 3. 내 사진첩 (도감) 모달 -->
     <div id="album-modal" class="modal">
         <h3>📖 나의 타임슬립 앨범</h3>
-        <div id="album-list" style="max-height: 35vh; overflow-y: auto; text-align: left; margin-bottom: 10px;"></div>
+        <p style="font-size: 11px; color: #666; margin-top:0;">사진을 터치하면 크게 확대해서 볼 수 있습니다.</p>
+        <div id="album-list" style="max-height: 32vh; overflow-y: auto; text-align: left; margin-bottom: 10px;"></div>
         <button class="btn btn-secondary" onclick="closeModal('album-modal')">닫기</button>
     </div>
 
-    <!-- 4. 관리자 모드 모달 (등록/수정 전용) -->
+    <!-- 4. 사진 상세 확대 보기 및 다운로드 모달 -->
+    <div id="photo-detail-modal" class="modal" style="max-width: 90%; width: 90%; padding: 15px;">
+        <h3 id="detail-title" style="font-size: 15px; margin-bottom: 5px;">제목</h3>
+        <div style="width: 100%; height: 50vh; overflow: auto; background: #000; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative;">
+            <img id="detail-img" src="" alt="확대 사진" style="max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.2s;" onclick="toggleZoomImage(this)">
+        </div>
+        <p id="detail-desc" style="font-size: 12px; color: #666; margin: 6px 0 0 0;"></p>
+        <p id="detail-date" style="font-size: 10px; color: #999; margin: 2px 0 0 0;"></p>
+        
+        <!-- 🌟 사진 다운로드 버튼 추가 -->
+        <button class="btn" style="background: #4caf50; margin-top: 8px; padding: 10px; font-size: 13px;" onclick="downloadPhoto()">📥 사진 원본 다운로드</button>
+        <button class="btn btn-secondary" onclick="closeModal('photo-detail-modal')" style="margin-top: 5px; padding: 8px;">닫기</button>
+    </div>
+
+    <!-- 5. 관리자 모드 모달 (등록/수정 전용) -->
     <div id="admin-modal" class="modal" style="max-width: 380px;">
         <h3 id="admin-modal-title">🛠️ 타임캡슐 관리자 모드</h3>
         
@@ -136,7 +151,7 @@
         <button class="btn btn-secondary" onclick="closeModal('admin-modal')" style="margin-top: 10px; padding: 10px;">닫기</button>
     </div>
 
-    <!-- 5. 독립된 등록된 캡슐 목록 모달 (수정/삭제 전용) -->
+    <!-- 6. 독립된 등록된 캡슐 목록 모달 (수정/삭제 전용) -->
     <div id="admin-list-modal" class="modal" style="max-width: 380px;">
         <h3>📂 등록된 캡슐 목록</h3>
         <div id="admin-capsule-list" class="scroll-list"></div>
@@ -151,6 +166,7 @@
                 document.getElementById('admin-mode-btn').style.display = 'inline-block';
                 document.getElementById('admin-list-btn').style.display = 'inline-block';
             }
+            loadUserData();
         });
 
         var map = L.map('map').setView([37.5665, 126.9780], 15);
@@ -168,7 +184,7 @@
         let currentLat = 37.5665;
         let currentLon = 126.9780;
         let activeCapsule = null;
-        let currentMissionCapsule = null; // 🌟 미션 진행 중 고정할 캡슐 변수
+        let currentMissionCapsule = null;
         let pickedLat = null;
         let pickedLon = null;
         let isPickingMode = false;
@@ -177,6 +193,30 @@
         let accumulatedMeters = 0;
         let userFilms = 15;
         let isFirstGPS = true;
+
+        function loadUserData() {
+            let savedSteps = localStorage.getItem('gwangmyeong_steps');
+            let savedMeters = localStorage.getItem('gwangmyeong_meters');
+            let savedFilms = localStorage.getItem('gwangmyeong_films');
+
+            if (savedSteps !== null) totalSteps = parseInt(savedSteps);
+            if (savedMeters !== null) accumulatedMeters = parseFloat(savedMeters);
+            if (savedFilms !== null) {
+                userFilms = parseInt(savedFilms);
+            } else {
+                userFilms = 15;
+                localStorage.setItem('gwangmyeong_films', userFilms);
+            }
+
+            document.getElementById('step-count').innerText = totalSteps;
+            document.getElementById('film-count').innerText = userFilms;
+        }
+
+        function saveUserData() {
+            localStorage.setItem('gwangmyeong_steps', totalSteps);
+            localStorage.setItem('gwangmyeong_meters', accumulatedMeters);
+            localStorage.setItem('gwangmyeong_films', userFilms);
+        }
 
         const defaultCapsules = [
             {
@@ -269,6 +309,7 @@
                     if (dist <= 30) {
                         userFilms += 2;
                         document.getElementById('film-count').innerText = userFilms;
+                        saveUserData();
                         alert("🎞️ 필름 조각을 수집했습니다! (빛바랜 필름 +2 획득)");
                         map.removeLayer(marker);
                     } else {
@@ -318,10 +359,12 @@
                             if (newSteps > totalSteps) {
                                 totalSteps = newSteps;
                                 document.getElementById('step-count').innerText = totalSteps;
+                                saveUserData();
 
                                 if (totalSteps % 1000 === 0) {
                                     userFilms += 1;
                                     document.getElementById('film-count').innerText = userFilms;
+                                    saveUserData();
                                     alert("👣 1000걸음 달성! 보상으로 필름 1개가 충전되었습니다!");
                                 }
                             }
@@ -405,8 +448,8 @@
             }
             userFilms -= 10;
             document.getElementById('film-count').innerText = userFilms;
+            saveUserData();
             
-            // 🌟 미션 대상 캡슐 안전 고정
             currentMissionCapsule = activeCapsule;
             closeModal('discovery-modal');
             
@@ -428,7 +471,6 @@
             btn.className = 'btn';
         }
 
-        // 🌟 안정적으로 사진첩에 저장되도록 개선된 함수
         function savePhoto() {
             if (!currentMissionCapsule) {
                 alert("타임캡슐 정보를 찾을 수 없습니다. 다시 시도해주세요.");
@@ -576,12 +618,7 @@
                         ctx.drawImage(img, 0, 0, width, height);
 
                         let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                        
-                        try {
-                            saveCapsuleData(editId, title, desc, compressedDataUrl, pickedLat, pickedLon);
-                        } catch (err) {
-                            alert("⚠️ 저장 공간이 가득 찼습니다. 이미지 URL 방식을 이용해 주세요.");
-                        }
+                        saveCapsuleData(editId, title, desc, compressedDataUrl, pickedLat, pickedLon);
                     };
                 };
                 reader.readAsDataURL(file);
@@ -645,12 +682,11 @@
             } else {
                 album.forEach(item => {
                     albumList.innerHTML += `
-                        <div class="list-item">
+                        <div class="list-item" onclick="openPhotoDetail('${item.title}', '${item.url}', '${item.desc}', '${item.date}')">
                             <img src="${item.url}" alt="사진">
-                            <div>
+                            <div style="flex-grow:1; margin-left:6px;">
                                 <div style="font-weight:bold; font-size:12px;">${item.title}</div>
                                 <div style="font-size:10px; color:#888;">${item.desc}</div>
-                                <div style="font-size:9px; color:#aaa;">획득일: ${item.date}</div>
                             </div>
                         </div>
                     `;
@@ -659,10 +695,46 @@
             document.getElementById('album-modal').style.display = 'block';
         }
 
+        function openPhotoDetail(title, url, desc, date) {
+            document.getElementById('detail-title').innerText = title;
+            document.getElementById('detail-img').src = url;
+            document.getElementById('detail-img').style.transform = "scale(1)";
+            document.getElementById('detail-desc').innerText = desc;
+            document.getElementById('detail-date').innerText = "획득일: " + date;
+            
+            document.getElementById('album-modal').style.display = 'none';
+            document.getElementById('photo-detail-modal').style.display = 'block';
+        }
+
+        function toggleZoomImage(imgElement) {
+            if (imgElement.style.transform === "scale(2)") {
+                imgElement.style.transform = "scale(1)";
+            } else {
+                imgElement.style.transform = "scale(2)";
+            }
+        }
+
+        // 🌟 사진 원본 다운로드 실행 함수
+        function downloadPhoto() {
+            let imgUrl = document.getElementById('detail-img').src;
+            let title = document.getElementById('detail-title').innerText || "타임캡슐_사진";
+            
+            let a = document.createElement('a');
+            a.href = imgUrl;
+            a.download = title + ".jpg";
+            a.target = "_blank";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
             if(modalId === 'admin-modal') {
                 resetAdminForm();
+            }
+            if(modalId === 'photo-detail-modal') {
+                openAlbum();
             }
         }
     </script>
