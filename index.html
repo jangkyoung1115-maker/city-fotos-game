@@ -3,18 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 지도 지정 & 파일 업로드 관리자</title>
+    <title>타임슬립 탐험대 - 지도 자유 탐색 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
         #map { width: 100%; height: 100vh; }
         
-        /* 지도 중앙 고정 십자선 (관리자 모드 전용 핀포인트용) */
-        #map-crosshair {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 28px; z-index: 999; pointer-events: none; display: none; text-shadow: 0 0 5px white;
-        }
-
         /* 상단 UI 패널 */
         .top-panel {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
@@ -76,9 +70,6 @@
         <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">관리자 모드</button>
     </div>
 
-    <!-- 지도 중앙 십자선 (관리자 모드 전용) -->
-    <div id="map-crosshair">🎯</div>
-
     <!-- 하단 가이드 배너 -->
     <div id="guide-banner" class="guide-banner">
         GPS 위치를 탐색 중입니다...
@@ -117,7 +108,6 @@
     <!-- 4. 관리자 모드 모달 -->
     <div id="admin-modal" class="modal" style="max-width: 400px;">
         <h3>🛠️ 타임캡슐 관리자 모드</h3>
-        <p style="font-size: 11px; color: #666; margin-bottom: 8px;">지도를 움직여 <b>화면 중앙(🎯)</b>에 원하는 위치를 맞춘 뒤 아래 정보를 입력하세요!</p>
         
         <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 양평 옛 다리)">
         
@@ -128,11 +118,16 @@
 
         <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
         
-        <button class="btn" style="background:#4caf50;" onclick="addNewCapsuleAtCenter()">🎯 지도 중앙에 캡슐 등록</button>
+        <div style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin: 8px 0; border: 1px dashed #ccc;">
+            <div id="selected-coords-text" style="font-size: 12px; color: #555; margin-bottom: 6px;">선택된 위치: 미지정 (아래 버튼을 누르세요)</div>
+            <button class="btn" style="background: #3f51b5; margin-top: 0; padding: 8px;" onclick="startPickingLocation()">📍 지도에서 위치 직접 찍기</button>
+        </div>
+
+        <button class="btn" style="background:#4caf50;" onclick="addNewCapsule()">✨ 타임캡슐 최종 등록</button>
         
         <hr style="margin: 12px 0; border:0; border-top:1px solid #eee;">
         <h4 style="margin: 3px 0; font-size: 12px; text-align: left;">등록된 캡슐 목록</h4>
-        <div id="admin-capsule-list" class="scroll-list" style="max-height: 120px;"></div>
+        <div id="admin-capsule-list" class="scroll-list" style="max-height: 110px;"></div>
 
         <button class="btn btn-secondary" onclick="closeModal('admin-modal')">닫기</button>
     </div>
@@ -156,10 +151,14 @@
         var userMarker = null;
         var capsuleMarkers = {};
         var dustMarkers = [];
+        var tempPickMarker = null;
         
         let currentLat = 37.5665;
         let currentLon = 126.9780;
         let activeCapsule = null;
+        let pickedLat = null;
+        let pickedLon = null;
+        let isPickingMode = false;
 
         let totalSteps = 0;
         let accumulatedMeters = 0;
@@ -288,6 +287,9 @@
 
                         userMarker = L.marker([currentLat, currentLon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
 
+                        // 최초 접속 시에만 내 위치로 부드럽게 이동
+                        map.setView([currentLat, currentLon], 16);
+
                         renderCapsuleMarkers();
                         spawnDustObjects(currentLat, currentLon);
 
@@ -314,10 +316,8 @@
                         }
                     }
 
+                    // 내 위치 마커 좌표는 실시간 갱신하지만, map.setView는 호출하지 않아 유저의 지도 탐색을 방해하지 않음
                     userMarker.setLatLng([currentLat, currentLon]);
-                    if (!window.isAdminOpen) { // 관리자 모드 중에는 지도가 내 위치로 강제 이동되지 않도록 방어
-                        map.setView([currentLat, currentLon], 16);
-                    }
 
                     let capsules = getCapsules();
                     let album = getAlbum();
@@ -356,6 +356,35 @@
                 },
                 { enableHighAccuracy: true }
             );
+        }
+
+        map.on('click', function(e) {
+            if (isPickingMode) {
+                pickedLat = e.latlng.lat;
+                pickedLon = e.latlng.lng;
+
+                if (tempPickMarker) {
+                    map.removeLayer(tempPickMarker);
+                }
+                let pickIcon = L.divIcon({
+                    className: 'custom-pick',
+                    html: '<div style="background:#ff5722; width:30px; height:30px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(255,87,34,0.9); display:flex; align-items:center; justify-content:center; color:white; font-size:14px; font-weight:bold;">📍</div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+                tempPickMarker = L.marker([pickedLat, pickedLon], {icon: pickIcon}).addTo(map);
+
+                document.getElementById('selected-coords-text').innerText = `선택된 위치: 위도 ${pickedLat.toFixed(4)}, 경도 ${pickedLon.toFixed(4)}`;
+                isPickingMode = false;
+                document.getElementById('admin-modal').style.display = 'block';
+                alert("📍 위치가 지정되었습니다! 관리자 창에서 등록을 완료해주세요.");
+            }
+        });
+
+        function startPickingLocation() {
+            isPickingMode = true;
+            document.getElementById('admin-modal').style.display = 'none';
+            alert("🗺️ 지도를 터치하여 타임캡슐을 배치할 장소를 선택해주세요!");
         }
 
         function startMission() {
@@ -407,12 +436,7 @@
             closeModal('mission-modal');
         }
 
-        // 관리자 모드 열기
-        window.isAdminOpen = false;
         function openAdminModal() {
-            window.isAdminOpen = true;
-            document.getElementById('map-crosshair').style.display = 'block'; // 지도 중앙 십자선 표시
-
             let listDiv = document.getElementById('admin-capsule-list');
             listDiv.innerHTML = "";
             let capsules = getCapsules();
@@ -436,14 +460,17 @@
             document.getElementById('admin-modal').style.display = 'block';
         }
 
-        // 지도 중앙(십자선) 위치에 새 캡슐 등록 (파일 업로드 처리)
-        function addNewCapsuleAtCenter() {
+        function addNewCapsule() {
             let title = document.getElementById('admin-title').value.trim();
             let desc = document.getElementById('admin-desc').value.trim();
             let fileInput = document.getElementById('admin-file');
 
             if (!title) {
                 alert("타임캡슐 제목을 입력해주세요!");
+                return;
+            }
+            if (pickedLat === null || pickedLon === null) {
+                alert("위치 지정 버튼을 눌러 지도에서 타임캡슐 위치를 먼저 선택해주세요!");
                 return;
             }
             if (fileInput.files.length === 0) {
@@ -455,17 +482,14 @@
             let reader = new FileReader();
 
             reader.onload = function(e) {
-                let base64Image = e.target.result; // 이미지를 텍스트(Base64)로 변환하여 안전하게 저장
+                let base64Image = e.target.result;
                 
-                // 현재 지도 화면의 정중앙 좌표 계산
-                let centerLatLng = map.getCenter();
-
                 let capsules = getCapsules();
                 let newCapsule = {
                     id: "capsule_" + Date.now(),
                     title: title,
-                    lat: centerLatLng.lat,
-                    lon: centerLatLng.lng,
+                    lat: pickedLat,
+                    lon: pickedLon,
                     url: base64Image,
                     desc: desc || "새로 발굴된 역사 타임캡슐입니다."
                 };
@@ -473,10 +497,17 @@
                 capsules.push(newCapsule);
                 localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
 
-                alert("🎯 지정한 지도 위치에 타임캡슐이 성공적으로 등록되었습니다!");
+                alert("✨ 선택한 위치에 타임캡슐이 성공적으로 등록되었습니다!");
                 document.getElementById('admin-title').value = "";
                 document.getElementById('admin-desc').value = "";
                 document.getElementById('admin-file').value = "";
+                document.getElementById('selected-coords-text').innerText = "선택된 위치: 미지정 (아래 버튼을 누르세요)";
+                pickedLat = null;
+                pickedLon = null;
+                if (tempPickMarker) {
+                    map.removeLayer(tempPickMarker);
+                    tempPickMarker = null;
+                }
 
                 closeModal('admin-modal');
                 renderCapsuleMarkers();
@@ -521,10 +552,6 @@
 
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
-            if (modalId === 'admin-modal') {
-                window.isAdminOpen = false;
-                document.getElementById('map-crosshair').style.display = 'none'; // 관리자창 닫으면 십자선 숨김
-            }
         }
     </script>
 </body>
