@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 완성형</title>
+    <title>타임슬립 탐험대 - 초경량 압축 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -115,10 +115,10 @@
         <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 양평 옛 다리)">
         
         <div style="background: #fdfdfd; padding: 6px; border-radius: 8px; margin: 4px 0; border: 1px solid #ddd; text-align: left;">
-            <label style="font-size: 11px; font-weight: bold; color: #333;">📸 사진 선택 (폰 갤러리 또는 파일)</label>
+            <label style="font-size: 11px; font-weight: bold; color: #333;">📸 사진 선택 (폰 갤러리)</label>
             <input type="file" id="admin-file" accept="image/*" class="form-input" style="margin-top: 2px; font-size: 11px; padding: 4px;">
-            <div style="font-size: 10px; color: #666; margin: 2px 0; text-align: center;">--- 또는 이미지 URL ---</div>
-            <input type="text" id="admin-url" class="form-input" placeholder="https:// 이미지 주소" style="margin-bottom: 2px; padding: 6px;">
+            <div style="font-size: 10px; color: #666; margin: 2px 0; text-align: center;">--- 또는 이미지 URL (추천) ---</div>
+            <input type="text" id="admin-url" class="form-input" placeholder="https:// 이미지 주소 입력" style="margin-bottom: 2px; padding: 6px;">
         </div>
 
         <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
@@ -131,7 +131,6 @@
         <button id="admin-submit-btn" class="btn" style="background:#4caf50; margin-top: 6px; padding: 10px;" onclick="processAndSaveCapsule()">✨ 타임캡슐 등록하기</button>
         <button id="admin-cancel-edit-btn" class="btn btn-secondary" style="display:none; margin-top: 4px; padding: 6px;" onclick="resetAdminForm()">수정 취소</button>
         
-        <!-- 🌟 목록 접기/펼치기 아코디언 타이틀 -->
         <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 6px; text-align: left;">
             <div onclick="toggleAdminList()" style="font-size: 12px; font-weight: bold; color: #3f51b5; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
                 <span>📂 등록된 캡슐 목록 보기 (수정/삭제)</span>
@@ -221,7 +220,6 @@
             let album = getAlbum();
 
             capsules.forEach(cap => {
-                // 🌟 ID 기반으로 정확하게 수집 여부 판별 (오류 방지)
                 let collected = album.some(item => item.id === cap.id);
                 
                 let capsuleBg = collected ? 'linear-gradient(135deg, #ffd700, #ff8f00)' : 'linear-gradient(135deg, #9c27b0, #673ab7)';
@@ -427,7 +425,7 @@
 
         function savePhoto() {
             let photoData = {
-                id: activeCapsule.id, // 🌟 고유 ID 연동
+                id: activeCapsule.id,
                 title: activeCapsule.title,
                 date: new Date().toLocaleDateString(),
                 url: activeCapsule.url,
@@ -452,7 +450,6 @@
             document.getElementById('admin-modal').style.display = 'block';
         }
 
-        // 🌟 목록 아코디언 토글 기능
         function toggleAdminList() {
             let listDiv = document.getElementById('admin-capsule-list');
             let icon = document.getElementById('list-toggle-icon');
@@ -528,6 +525,7 @@
             document.getElementById('admin-cancel-edit-btn').style.display = 'none';
         }
 
+        // 🌟 초경량 압축 (최대 300px, 품질 0.6)으로 저장 공간 초과 원천 차단
         function processAndSaveCapsule() {
             let editId = document.getElementById('edit-capsule-id').value;
             let title = document.getElementById('admin-title').value.trim();
@@ -553,7 +551,7 @@
                     img.src = e.target.result;
                     img.onload = function() {
                         let canvas = document.createElement('canvas');
-                        let max_size = 500;
+                        let max_size = 300; // 초경량화
                         let width = img.width;
                         let height = img.height;
 
@@ -568,12 +566,12 @@
                         let ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
 
-                        let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+                        let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
                         
                         try {
                             saveCapsuleData(editId, title, desc, compressedDataUrl, pickedLat, pickedLon);
                         } catch (err) {
-                            alert("⚠️ 저장 공간이 부족합니다.");
+                            alert("⚠️ 저장 공간이 가득 찼습니다. 이미지 URL 방식을 이용해 주세요.");
                         }
                     };
                 };
