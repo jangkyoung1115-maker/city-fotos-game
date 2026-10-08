@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>광명시 타임슬립 탐험대</title>
-    <!-- Leaflet 지도 라이브러리 CSS (도메인 등록 필요 없음) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -18,6 +17,13 @@
         }
         .resource-badge { color: #ff5722; }
         .album-btn { background: #3f51b5; color: white; border: none; padding: 6px 12px; border-radius: 15px; cursor: pointer; font-size: 12px; }
+
+        /* 하단 가이드 배너 */
+        .guide-banner {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 20px; border-radius: 20px;
+            z-index: 1000; font-size: 13px; text-align: center; max-width: 90%; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
 
         /* 팝업 모달 스타일 */
         .modal {
@@ -53,26 +59,31 @@
 
     <!-- 상단 상태바 -->
     <div class="top-panel">
-        <span>🎞️ 필름: <span id="film-count" class="resource-badge">5</span>개</span>
+        <span>🎞️ 필름: <span id="film-count" class="resource-badge">15</span>개</span>
         <button class="album-btn" onclick="openAlbum()">내 사진첩</button>
+    </div>
+
+    <!-- 하단 가이드 배너 -->
+    <div id="guide-banner" class="guide-banner">
+        광명시 옛 사진 타임캡슐을 찾아 이동하세요! (10m 이내 접근 시 개봉 가능)
     </div>
 
     <!-- 지도 영역 -->
     <div id="map"></div>
 
-    <!-- 1. 타임캡슐 발견 팝업 -->
+    <!-- 1. 타임캡슐 발견 팝업 (10m 이내) -->
     <div id="discovery-modal" class="modal">
         <h3>⏳ 타임캡슐 발견!</h3>
-        <p>1980년대 광명시장 옛 풍경이 담긴 타임캡슐입니다.</p>
-        <p style="font-size: 13px; color: #666;">개봉 비용: 필름 3개 소모</p>
-        <button class="btn" onclick="startMission()">캡슐 열기 (필름 사용)</button>
+        <p>1980년대 광명시장 옛 풍경이 숨겨져 있습니다.</p>
+        <p style="font-size: 13px; color: #666;">필요 자원: 빛바랜 필름 10개</p>
+        <button class="btn" onclick="startMission()">필름 10개 소모하고 개봉하기</button>
         <button class="btn btn-secondary" onclick="closeModal('discovery-modal')">나중에 하기</button>
     </div>
 
     <!-- 2. 미니게임 (먼지 닦기) 팝업 -->
     <div id="mission-modal" class="modal">
         <h3>🧹 사진 복원 미니게임</h3>
-        <p style="font-size: 13px; color: #666;">세월의 먼지를 쓱쓱 문질러 닦아내세요!</p>
+        <p style="font-size: 13px; color: #666;">화면을 문질러 세월의 먼지를 닦아내세요!</p>
         <div id="scratch-box" ontouchmove="wipeDust()" onclick="wipeDust()">
             <img src="https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400" id="target-photo" alt="옛 사진">
             <div id="overlay-text" class="scratch-overlay">여기를 터치해 먼지 닦기!</div>
@@ -80,34 +91,34 @@
         <button id="complete-btn" class="btn btn-secondary" disabled onclick="savePhoto()">사진첩에 저장하기</button>
     </div>
 
-    <!-- 3. 내 사진첩 (도감) 팝업 -->
+    <!-- 3. 내 사진첩 (도감) 모달 -->
     <div id="album-modal" class="modal">
         <h3>📖 나의 광명 타임슬립 앨범</h3>
         <div id="album-list"></div>
         <button class="btn btn-secondary" onclick="closeModal('album-modal')">닫기</button>
     </div>
 
-    <!-- Leaflet 지도 라이브러리 JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // 1. 지도 초기화 (광명시청 기준)
         var map = L.map('map').setView([37.4784, 126.8646], 15);
 
-        // 오픈스트리트맵 타일 적용 (키 필요 없음)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // 유저 마커 생성
-        var userMarker = L.marker([37.4784, 126.8646]).addTo(map).bindId = 'user';
+        // 유저 마커
+        var userMarker = L.marker([37.4784, 126.8646]).addTo(map);
 
-        // 타임캡슐 스팟 설정 (광명시청 인근)
+        // 타임캡슐 스팟 (광명시청 인근)
         var targetLat = 37.4784;
         var targetLon = 126.8646;
-        var capsuleMarker = L.marker([targetLat, targetLon]).addTo(map).bindPopup("<b>타임캡슐 스팟</b>");
+        var capsuleMarker = L.marker([targetLat, targetLon]).addTo(map).bindPopup("<b>1980년대 광명시장 타임캡슐</b>");
 
-        // 두 좌표 간 거리 계산 함수 (미터 단위)
+        let hasDiscovered = false; // 중복 팝업 방지
+
+        // 거리 계산 함수 (미터 단위)
         function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
             var R = 6371000;
             var dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -119,7 +130,7 @@
             return R * c;
         }
 
-        // GPS 실시간 추적
+        // GPS 실시간 추적 및 거리 판정
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
                 function(position) {
@@ -130,8 +141,19 @@
                     map.setView([lat, lon], map.getZoom());
 
                     var distance = getDistanceFromLatLonInMeters(lat, lon, targetLat, targetLon);
-                    if (distance <= 20) {
-                        document.getElementById('discovery-modal').style.display = 'block';
+                    
+                    let banner = document.getElementById('guide-banner');
+
+                    if (distance <= 50 && distance > 10) {
+                        banner.innerText = "✨ [알림] 근처에 타임캡슐이 숨겨져 있습니다! (50m 이내)";
+                    } else if (distance <= 10) {
+                        banner.innerText = "🎯 타임캡슐 발견 지점에 도달했습니다!";
+                        if (!hasDiscovered) {
+                            hasDiscovered = true;
+                            document.getElementById('discovery-modal').style.display = 'block';
+                        }
+                    } else {
+                        banner.innerText = `타임캡슐까지의 거리: 약 ${Math.round(distance)}m 남았습니다.`;
                     }
                 },
                 function(error) { console.error("GPS 오류", error); },
@@ -139,14 +161,14 @@
             );
         }
 
-        // 캡슐 열기 버튼 클릭 시
+        // 캡슐 열기 버튼 클릭 시 (필름 10개 소모)
         function startMission() {
             let userFilms = parseInt(document.getElementById('film-count').innerText);
-            if (userFilms < 3) {
-                alert("필름이 부족합니다! 광명시를 더 걸어서 필름을 모아보세요.");
+            if (userFilms < 10) {
+                alert("빛바랜 필름이 부족합니다! (필요: 10개)");
                 return;
             }
-            userFilms -= 3;
+            userFilms -= 10;
             document.getElementById('film-count').innerText = userFilms;
             
             closeModal('discovery-modal');
@@ -163,7 +185,7 @@
             btn.className = 'btn';
         }
 
-        // 사진 획득 및 LocalStorage 저장
+        // 사진 획득 및 LocalStorage 도감 저장
         function savePhoto() {
             let photoData = {
                 title: "1980년대 광명시장 전경",
@@ -175,9 +197,9 @@
             if (!album.some(item => item.title === photoData.title)) {
                 album.push(photoData);
                 localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
-                alert("🎉 성공적으로 사진을 사진첩에 보관했습니다!");
+                alert("🎉 성공적으로 광명 옛 사진을 도감에 수집했습니다!");
             } else {
-                alert("이미 보유하고 있는 사진입니다!");
+                alert("이미 도감에 등록된 사진입니다!");
             }
 
             closeModal('mission-modal');
@@ -191,7 +213,7 @@
             let album = JSON.parse(localStorage.getItem('gwangmyeong_album') || '[]');
             
             if (album.length === 0) {
-                albumList.innerHTML = "<p style='color:#888; text-align:center;'>아직 획득한 사진이 없습니다.<br>타임캡슐을 찾아보세요!</p>";
+                albumList.innerHTML = "<p style='color:#888; text-align:center;'>아직 수집한 사진이 없습니다.<br>타임캡슐을 찾아보세요!</p>";
             } else {
                 album.forEach(item => {
                     albumList.innerHTML += `
