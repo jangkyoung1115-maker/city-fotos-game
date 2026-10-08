@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>광명시 타임슬립 탐험대</title>
+    <!-- 카카오맵 API (제공해주신 키 적용) -->
+   <!-- 수정 -->
+<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=8157177d4a1cb67b5f645d94f77822a5"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
+        #map { width: 100%; height: 100vh; }
+        
+        /* 상단 UI 패널 (자원 및 앨범 버튼) */
+        .top-panel {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95); padding: 10px 20px; border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 10; display: flex; align-items: center; gap: 15px; font-weight: bold; font-size: 14px;
+        }
+        .resource-badge { color: #ff5722; }
+        .album-btn { background: #3f51b5; color: white; border: none; padding: 6px 12px; border-radius: 15px; cursor: pointer; font-size: 12px; }
+
+        /* 팝업 모달 스타일 */
+        .modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 100; text-align: center; width: 85%; max-width: 340px; box-sizing: border-box;
+        }
+        .modal h3 { margin-top: 0; color: #333; }
+        .btn {
+            background: #ff5722; color: white; border: none; padding: 12px 20px;
+            border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px;
+        }
+        .btn-secondary { background: #ccc; color: #333; }
+
+        /* 먼지 닦기 미니게임 박스 */
+        #scratch-box {
+            width: 100%; height: 150px; background: #ddd; border-radius: 10px;
+            position: relative; overflow: hidden; margin: 15px 0; display: flex; align-items: center; justify-content: center;
+        }
+        #scratch-box img { width: 100%; height: 100%; object-fit: cover; filter: blur(5px); transition: 0.5s; }
+        .scratch-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #888;
+            display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer;
+        }
+
+        /* 사진첩 도감 모달 */
+        #album-modal { max-height: 80vh; overflow-y: auto; text-align: left; }
+        .album-item { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px; align-items: center; }
+        .album-item img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; }
+    </style>
+</head>
+<body>
+
+    <!-- 상단 상태바 -->
+    <div class="top-panel">
+        <span>🎞️ 필름: <span id="film-count" class="resource-badge">5</span>개</span>
+        <button class="album-btn" onclick="openAlbum()">내 사진첩</button>
+    </div>
+
+    <!-- 카카오맵 영역 -->
+    <div id="map"></div>
+
+    <!-- 1. 타임캡슐 발견 팝업 -->
+    <div id="discovery-modal" class="modal">
+        <h3>⏳ 타임캡슐 발견!</h3>
+        <p>1980년대 광명시장 옛 풍경이 담긴 타임캡슐입니다.</p>
+        <p style="font-size: 13px; color: #666;">개봉 비용: 필름 3개 소모</p>
+        <button class="btn" onclick="startMission()">캡슐 열기 (필름 사용)</button>
+        <button class="btn btn-secondary" onclick="closeModal('discovery-modal')">나중에 하기</button>
+    </div>
+
+    <!-- 2. 미니게임 (먼지 닦기) 팝업 -->
+    <div id="mission-modal" class="modal">
+        <h3>🧹 사진 복원 미니게임</h3>
+        <p style="font-size: 13px; color: #666;">세월의 먼지를 쓱쓱 문질러 닦아내세요!</p>
+        <div id="scratch-box" ontouchmove="wipeDust()" onclick="wipeDust()">
+            <img src="https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400" id="target-photo" alt="옛 사진">
+            <div id="overlay-text" class="scratch-overlay">여기를 터치해 먼지 닦기!</div>
+        </div>
+        <button id="complete-btn" class="btn btn-secondary" disabled onclick="savePhoto()">사진첩에 저장하기</button>
+    </div>
+
+    <!-- 3. 내 사진첩 (도감) 팝업 -->
+    <div id="album-modal" class="modal">
+        <h3>📖 나의 광명 타임슬립 앨범</h3>
+        <div id="album-list">
+            <!-- 획득한 사진들이 여기에 동적으로 쌓입니다 -->
+        </div>
+        <button class="btn btn-secondary" onclick="closeModal('album-modal')">닫기</button>
+    </div>
+
+    <script>
+        // 1. 지도 초기화 (광명시청 기준)
+        var container = document.getElementById('map');
+        var options = {
+            center: new kakao.maps.LatLng(37.4784, 126.8646),
+            level: 3
+        };
+        var map = new kakao.maps.Map(container, options);
+
+        // 유저 커서(마커)
+        var userMarker = new kakao.maps.Marker({
+            position: new kakao.maps.LatLng(37.4784, 126.8646)
+        });
+        userMarker.setMap(map);
+
+        // 타임캡슐 스팟 설정 (테스트용 좌표: 광명시청 인근)
+        var targetLat = 37.4784;
+        var targetLon = 126.8646;
+        var capsuleMarker = new kakao.maps.Marker({
+            position: new kakao.maps.LatLng(targetLat, targetLon)
+        });
+        capsuleMarker.setMap(map);
+
+        // 유저 재화 (필름)
+        let userFilms = 5;
+
+        // 거리 계산 함수 (미터 단위)
+        function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+            var R = 6371000;
+            var dLat = (lat2 - lat1) * (Math.PI / 180);
+            var dLon = (lon2 - lon1) * (Math.PI / 180);
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // GPS 실시간 추적
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(
+                function(position) {
+                    var lat = position.coords.latitude;
+                    var lon = position.coords.longitude;
+                    var currentPos = new kakao.maps.LatLng(lat, lon);
+
+                    userMarker.setPosition(currentPos);
+                    map.setCenter(currentPos);
+
+                    // 20미터 이내 접근 시 팝업 오픈
+                    var distance = getDistanceFromLatLonInMeters(lat, lon, targetLat, targetLon);
+                    if (distance <= 20) {
+                        document.getElementById('discovery-modal').style.display = 'block';
+                    }
+                },
+                function(error) { console.error("GPS 오류", error); },
+                { enableHighAccuracy: true }
+            );
+        }
+
+        // 캡슐 열기 버튼 클릭 시
+        function startMission() {
+            if (userFilms < 3) {
+                alert("필름이 부족합니다! 광명시를 더 걸어서 필름을 모아보세요.");
+                return;
+            }
+            userFilms -= 3; // 필름 3개 차감
+            document.getElementById('film-count').innerText = userFilms;
+            
+            closeModal('discovery-modal');
+            document.getElementById('mission-modal').style.display = 'block';
+        }
+
+        // 먼지 닦기 미니게임 완료 로직
+        function wipeDust() {
+            document.getElementById('target-photo').style.filter = 'blur(0px)';
+            document.getElementById('overlay-text').style.display = 'none';
+            
+            let btn = document.getElementById('complete-btn');
+            btn.disabled = false;
+            btn.className = 'btn'; // 활성화 색상으로 변경
+        }
+
+        // 사진 획득 및 LocalStorage 저장
+        function savePhoto() {
+            let photoData = {
+                title: "1980년대 광명시장 전경",
+                date: new Date().toLocaleDateString(),
+                url: "https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400"
+            };
+
+            // 기존 도감 불러오기
+            let album = JSON.parse(localStorage.getItem('gwangmyeong_album') || '[]');
+            // 중복 저장 방지 체크
+            if (!album.some(item => item.title === photoData.title)) {
+                album.push(photoData);
+                localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
+                alert("🎉 성공적으로 사진을 사진첩에 보관했습니다!");
+            } else {
+                alert("이미 보유하고 있는 사진입니다!");
+            }
+
+            closeModal('mission-modal');
+        }
+
+        // 사진첩(도감) 열기
+        function openAlbum() {
+            let albumList = document.getElementById('album-list');
+            albumList.innerHTML = "";
+            
+            let album = JSON.parse(localStorage.getItem('gwangmyeong_album') || '[]');
+            
+            if (album.length === 0) {
+                albumList.innerHTML = "<p style='color:#888; text-align:center;'>아직 획득한 사진이 없습니다.<br>타임캡슐을 찾아보세요!</p>";
+            } else {
+                album.forEach(item => {
+                    albumList.innerHTML += `
+                        <div class="album-item">
+                            <img src="${item.url}" alt="사진">
+                            <div>
+                                <div style="font-weight:bold; font-size:14px;">${item.title}</div>
+                                <div style="font-size:11px; color:#888;">획득일: ${item.date}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('album-modal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+    </script>
+</body>
+</html>
