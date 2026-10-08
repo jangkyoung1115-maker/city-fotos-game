@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 지도 자유 탐색 버전</title>
+    <title>타임슬립 탐험대 - 관리자 등록 안정화 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -27,11 +27,11 @@
             z-index: 1000; font-size: 13px; text-align: center; max-width: 90%; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
-        /* 팝업 모달 스타일 */
+        /* 팝업 모달 스타일 (Z-index를 확실히 높게 설정) */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            z-index: 2000; text-align: center; width: 85%; max-width: 360px; box-sizing: border-box;
+            z-index: 9999; text-align: center; width: 85%; max-width: 360px; box-sizing: border-box;
         }
         .modal h3 { margin-top: 0; color: #333; }
         .btn {
@@ -119,7 +119,7 @@
         <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
         
         <div style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin: 8px 0; border: 1px dashed #ccc;">
-            <div id="selected-coords-text" style="font-size: 12px; color: #555; margin-bottom: 6px;">선택된 위치: 미지정 (아래 버튼을 누르세요)</div>
+            <div id="selected-coords-text" style="font-size: 12px; color: #c2185b; font-weight: bold; margin-bottom: 6px;">선택된 위치: 미지정 (아래 버튼을 누르세요)</div>
             <button class="btn" style="background: #3f51b5; margin-top: 0; padding: 8px;" onclick="startPickingLocation()">📍 지도에서 위치 직접 찍기</button>
         </div>
 
@@ -286,8 +286,6 @@
                         });
 
                         userMarker = L.marker([currentLat, currentLon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
-
-                        // 최초 접속 시에만 내 위치로 부드럽게 이동
                         map.setView([currentLat, currentLon], 16);
 
                         renderCapsuleMarkers();
@@ -316,7 +314,6 @@
                         }
                     }
 
-                    // 내 위치 마커 좌표는 실시간 갱신하지만, map.setView는 호출하지 않아 유저의 지도 탐색을 방해하지 않음
                     userMarker.setLatLng([currentLat, currentLon]);
 
                     let capsules = getCapsules();
@@ -377,7 +374,7 @@
                 document.getElementById('selected-coords-text').innerText = `선택된 위치: 위도 ${pickedLat.toFixed(4)}, 경도 ${pickedLon.toFixed(4)}`;
                 isPickingMode = false;
                 document.getElementById('admin-modal').style.display = 'block';
-                alert("📍 위치가 지정되었습니다! 관리자 창에서 등록을 완료해주세요.");
+                alert("📍 위치가 지정되었습니다!");
             }
         });
 
@@ -389,7 +386,7 @@
 
         function startMission() {
             if (userFilms < 10) {
-                alert("빛바랜 필름이 부족합니다! (필요: 10개)\n길가에 흩어진 파란색 '시간의 먼지'를 터치해 모아보세요.");
+                alert("빛바랜 필름이 부족합니다! (필요: 10개)");
                 return;
             }
             userFilms -= 10;
@@ -470,7 +467,7 @@
                 return;
             }
             if (pickedLat === null || pickedLon === null) {
-                alert("위치 지정 버튼을 눌러 지도에서 타임캡슐 위치를 먼저 선택해주세요!");
+                alert("먼저 [지도에서 위치 직접 찍기] 버튼을 눌러 지도 위를 터치해주세요!");
                 return;
             }
             if (fileInput.files.length === 0) {
@@ -498,6 +495,8 @@
                 localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
 
                 alert("✨ 선택한 위치에 타임캡슐이 성공적으로 등록되었습니다!");
+                
+                // 입력 필드 초기화
                 document.getElementById('admin-title').value = "";
                 document.getElementById('admin-desc').value = "";
                 document.getElementById('admin-file').value = "";
