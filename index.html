@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 다이아몬드 캡슐 & 소형 커서 버전</title>
+    <title>타임슬립 탐험대 - 아치 액자형 캡슐 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -211,22 +211,22 @@
 
             capsules.forEach(cap => {
                 let collected = album.some(item => item.title === cap.title);
+                
+                // 🌟 빈티지 아치 액자형 색상 및 아이콘 설정 (미발견: 보라색 / 수집 완료: 황금빛 트로피)
                 let capsuleBg = collected ? 'linear-gradient(135deg, #ffd700, #ff8f00)' : 'linear-gradient(135deg, #9c27b0, #673ab7)';
                 let capsuleShadow = collected ? 'rgba(255,215,0,0.9)' : 'rgba(156,39,176,0.9)';
                 let capsuleText = collected ? '🏆' : '⏳';
 
-                // 🌟 타임캡슐: 크기 절반 축소 (18px) 및 다이아몬드 모양 (CSS 회전 기법 적용)
+                // 상단은 둥글고 하단은 반듯한 아치형 액자 모양 (border-radius: 상단좌우 12px, 하단좌우 2px)
                 let capsuleIcon = L.divIcon({
-                    className: 'custom-capsule',
-                    html: `<div style="width:18px; height:18px; transform:rotate(45deg); background:${capsuleBg}; border:2px solid white; box-shadow:0 0 6px ${capsuleShadow}; display:flex; align-items:center; justify-content:center;">
-                             <div style="transform:rotate(-45deg); color:white; font-size:9px; font-weight:bold;">${capsuleText}</div>
-                           </div>`,
-                    iconSize: [18, 18],
-                    iconAnchor: [9, 9]
+                    className: 'custom-arch-capsule',
+                    html: `<div style="width:22px; height:28px; background:${capsuleBg}; border-radius: 12px 12px 3px 3px; border:2px solid white; box-shadow:0 0 8px ${capsuleShadow}; display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:bold;">${capsuleText}</div>`,
+                    iconSize: [22, 28],
+                    iconAnchor: [11, 28]
                 });
 
                 let marker = L.marker([cap.lat, cap.lon], {icon: capsuleIcon}).addTo(map);
-                marker.bindPopup(`<b>${cap.title}</b><br>${collected ? '수집 완료됨' : '미발견 타임캡슐'}`);
+                marker.bindPopup(`<b>${cap.title}</b><br>${collected ? '수집 완료됨 (황금빛 액자)' : '미발견 타임캡슐 (보라색 아치)'}`);
                 
                 capsuleMarkers[cap.id] = { marker: marker, data: cap, collected: collected };
             });
@@ -243,25 +243,25 @@
                 let dLat = centerLat + offset.dLat;
                 let dLon = centerLon + offset.dLon;
 
-                let dustIcon = L.divIcon({
-                    className: 'custom-dust',
-                    html: '<div style="background:#2196f3; width:12px; height:12px; border-radius:50%; border:1.5px solid white; box-shadow:0 0 5px rgba(33,150,243,0.8); display:flex; align-items:center; justify-content:center; color:white; font-size:8px;">✨</div>',
-                    iconSize: [12, 12],
-                    iconAnchor: [6, 6]
+                let filmIcon = L.divIcon({
+                    className: 'custom-film',
+                    html: '<div style="background:#333; width:16px; height:16px; border-radius:3px; border:1.5px solid white; box-shadow:0 0 5px rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; font-size:9px;">🎞️</div>',
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
                 });
 
-                let marker = L.marker([dLat, dLon], {icon: dustIcon}).addTo(map);
-                marker.bindPopup("<b>✨ 시간의 먼지 조각</b><br>터치해서 필름을 수집하세요!");
+                let marker = L.marker([dLat, dLon], {icon: filmIcon}).addTo(map);
+                marker.bindPopup("<b>🎞️ 빛바랜 필름 조각</b><br>터치해서 필름을 수집하세요!");
                 
                 marker.on('click', function() {
                     let dist = getDistanceFromLatLonInMeters(currentLat, currentLon, dLat, dLon);
                     if (dist <= 30) {
                         userFilms += 2;
                         document.getElementById('film-count').innerText = userFilms;
-                        alert("✨ 시간의 먼지를 수집했습니다! (빛바랜 필름 +2 획득)");
+                        alert("🎞️ 필름 조각을 수집했습니다! (빛바랜 필름 +2 획득)");
                         map.removeLayer(marker);
                     } else {
-                        alert("너무 멀리 있습니다! 먼지 조각 가까이 다가가세요. (30m 이내)");
+                        alert("너무 멀리 있습니다! 필름 조각 가까이 다가가세요. (30m 이내)");
                     }
                 });
 
@@ -281,12 +281,11 @@
                     if (isFirstGPS) {
                         isFirstGPS = false;
                         
-                        // 🌟 유저 이동 커서: 기존 22px에서 절반인 12px로 축소
                         let userIcon = L.divIcon({
                             className: 'custom-user',
-                            html: '<div style="background:#00c853; width:12px; height:12px; border-radius:50%; border:2px solid white; box-shadow:0 0 6px rgba(0,200,83,0.8);"></div>',
-                            iconSize: [12, 12],
-                            iconAnchor: [6, 6]
+                            html: '<div style="background:#00c853; width:15px; height:15px; border-radius:50%; border:2px solid white; box-shadow:0 0 6px rgba(0,200,83,0.8);"></div>',
+                            iconSize: [15, 15],
+                            iconAnchor: [7.5, 7.5]
                         });
 
                         userMarker = L.marker([currentLat, currentLon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
@@ -429,7 +428,7 @@
                 album.push(photoData);
                 localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
                 alert("🎉 성공적으로 사진을 도감에 수집했습니다!");
-                renderCapsuleMarkers();
+                renderCapsuleMarkers(); // 🌟 수집 즉시 보라색 아치 액자가 황금빛 트로피 액자로 변경됨!
             } else {
                 alert("이미 도감에 등록된 사진입니다!");
             }
