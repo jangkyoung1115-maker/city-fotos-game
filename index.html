@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 물방울 핀 & 중심 좌표 연동 버전</title>
+    <title>타임슬립 탐험대 - 핀 정중앙 정렬 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
@@ -136,7 +136,7 @@
         <button class="btn btn-secondary" onclick="closeModal('photo-detail-modal')" style="margin-top: 5px; padding: 8px;">닫기</button>
     </div>
 
-    <!-- 5. 관리자 모드 모달 (지도 중심 좌표 자동 연동) -->
+    <!-- 5. 관리자 모드 모달 -->
     <div id="admin-modal" class="modal" style="max-width: 380px;">
         <h3 id="admin-modal-title">🛠️ 타임캡슐 관리자 모드</h3>
         
@@ -154,7 +154,6 @@
 
         <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
         
-        <!-- 🌟 지도 중심 좌표 자동 반영 안내 박스 -->
         <div style="background: #e8f5e9; padding: 8px; border-radius: 8px; margin: 6px 0; border: 1px solid #a5d6a7;">
             <div id="selected-coords-text" style="font-size: 11px; color: #2e7d32; font-weight: bold; margin-bottom: 4px;">📍 현재 지도 중심 위치로 자동 지정됨</div>
             <button class="btn" style="background: #3f51b5; margin-top: 0; padding: 6px; font-size: 11px;" onclick="startPickingLocation()">지도를 직접 터치해서 지정하기</button>
@@ -186,6 +185,17 @@
 
         var map = L.map('map').setView([37.5665, 126.9780], 15);
 
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/*.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // 타일레이어 URL 정확히 수정
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.TileLayer) {
+                map.removeLayer(layer);
+            }
+        });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
@@ -270,7 +280,7 @@
             return R * c;
         }
 
-        // 🌟 물방울 핀 모양 마커 렌더링
+        // 🌟 물방울 핀 정중앙 정렬 완벽 개선 렌더링
         function renderCapsuleMarkers() {
             for (let id in capsuleMarkers) {
                 map.removeLayer(capsuleMarkers[id]);
@@ -283,21 +293,21 @@
             capsules.forEach(cap => {
                 let collected = album.some(item => item.id === cap.id);
                 
-                let pinBg = collected ? '#ffb300' : '#8e24aa'; // 황금빛 vs 보라빛
+                let pinBg = collected ? '#ffb300' : '#8e24aa';
                 let pinShadow = collected ? 'rgba(255,179,0,0.8)' : 'rgba(142,36,170,0.8)';
                 let pinEmoji = collected ? '🏆' : '⏳';
 
                 let dropPinIcon = L.divIcon({
                     className: 'custom-droplet-pin',
                     html: `
-                        <div style="position:relative; width:26px; height:34px;">
-                            <div style="width:26px; height:26px; background:${pinBg}; border-radius:50% 50% 50% 0; transform:rotate(-45deg); position:absolute; top:0; left:0; border:2px solid white; box-shadow:0 3px 6px ${pinShadow}; display:flex; align-items:center; justify-content:center;">
-                            </div>
-                            <div style="position:absolute; top:2px; left:0; width:26px; height:26px; display:flex; align-items:center; justify-content:center; font-size:12px;">${pinEmoji}</div>
+                        <div style="position:relative; width:30px; height:38px;">
+                            <div style="width:30px; height:30px; background:${pinBg}; border-radius:50% 50% 50% 0; transform:rotate(-45deg); position:absolute; top:0; left:0; border:2px solid white; box-shadow:0 3px 6px ${pinShadow};"></div>
+                            <div style="position:absolute; top:0; left:0; width:30px; height:30px; display:flex; align-items:center; justify-content:center; font-size:13px;">${pinEmoji}</div>
                         </div>
                     `,
-                    iconSize: [26, 34],
-                    iconAnchor: [13, 34]
+                    iconSize: [30, 38],
+                    iconAnchor: [15, 38],
+                    popupAnchor: [0, -38]
                 });
 
                 let marker = L.marker([cap.lat, cap.lon], {icon: dropPinIcon}).addTo(map);
@@ -446,9 +456,14 @@
                 }
                 let pickIcon = L.divIcon({
                     className: 'custom-pick',
-                    html: '<div style="background:#ff5722; width:26px; height:34px; position:relative;"><div style="width:26px; height:26px; background:#ff5722; border-radius:50% 50% 50% 0; transform:rotate(-45deg); position:absolute; top:0; left:0; border:2px solid white; box-shadow:0 3px 6px rgba(255,87,34,0.8);"></div><div style="position:absolute; top:2px; left:0; width:26px; height:26px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:bold;">📍</div></div>',
-                    iconSize: [26, 34],
-                    iconAnchor: [13, 34]
+                    html: `
+                        <div style="position:relative; width:30px; height:38px;">
+                            <div style="width:30px; height:30px; background:#ff5722; border-radius:50% 50% 50% 0; transform:rotate(-45deg); position:absolute; top:0; left:0; border:2px solid white; box-shadow:0 3px 6px rgba(255,87,34,0.8);"></div>
+                            <div style="position:absolute; top:0; left:0; width:30px; height:30px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:bold;">📍</div>
+                        </div>
+                    `,
+                    iconSize: [30, 38],
+                    iconAnchor: [15, 38]
                 });
                 tempPickMarker = L.marker([pickedLat, pickedLon], {icon: pickIcon}).addTo(map);
 
@@ -529,7 +544,6 @@
             closeModal('mission-modal');
         }
 
-        // 🌟 관리자 모드 열 때 현재 지도 중심 좌표 자동 세팅
         function openAdminModal() {
             let center = map.getCenter();
             if (pickedLat === null || pickedLon === null) {
