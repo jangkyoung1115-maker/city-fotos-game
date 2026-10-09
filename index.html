@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 줌 반응형 마커 고도화 버전</title>
+    <title>타임슬립 탐험대 - 마커 클러스터링 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Leaflet MarkerCluster CSS 추가 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     
     <!-- Firebase SDK 추가 -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -188,6 +192,9 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet MarkerCluster JS 추가 -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAjH7abrM1-0a7OG1KdSsIlIAJmR_b3ypw",
@@ -224,6 +231,14 @@
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
+
+        // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
+        var markersGroup = L.markerClusterGroup({
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true
+        });
+        map.addLayer(markersGroup);
 
         var userMarker = null;
         var capsuleMarkers = {};
@@ -287,7 +302,7 @@
                     };
                     db.collection("capsules").add(defaultCap);
                 } else {
-                    renderMarkers();
+                    renderAllMarkers();
                 }
             });
 
@@ -298,7 +313,7 @@
                     data.id = doc.id;
                     cachedFilms.push(data);
                 });
-                renderMarkers();
+                renderAllMarkers();
             });
         }
 
@@ -321,37 +336,16 @@
             return R * c;
         }
 
-        // 🌟 지도의 줌 레벨에 따라 마크 크기가 가파르게 반응하도록 개선된 고도화 함수
-        function getResponsiveMarkerConfig() {
-            let zoom = map.getZoom();
-            // 최대 확대(19레벨)를 기준으로, 축소할수록 지수 함수 형태로 크기가 가파르게 줄어듦
-            let zoomDiff = Math.max(0, 19 - zoom);
-            let scale = Math.max(0.2, Math.pow(0.70, zoomDiff));
-            
-            let capsuleW = Math.round(36 * scale);
-            let capsuleH = Math.round(46 * scale);
-            let capsuleFont = Math.max(8, Math.round(16 * scale));
-
-            let filmFont = Math.max(10, Math.round(24 * scale));
-
-            return {
-                capsule: { size: [capsuleW, capsuleH], anchor: [capsuleW/2, capsuleH], font: capsuleFont },
-                film: { size: [Math.round(24 * scale), Math.round(24 * scale)], anchor: [Math.round(12 * scale), Math.round(12 * scale)], font: filmFont }
-            };
-        }
-
-        function renderMarkers() {
-            let config = getResponsiveMarkerConfig();
-
-            // 1. 타임캡슐 마커 렌더링
-            for (let id in capsuleMarkers) {
-                map.removeLayer(capsuleMarkers[id].marker);
-            }
+        // 🌟 모든 마커를 클러스터 그룹에 등록하여 깔끔하게 관리
+        function renderAllMarkers() {
+            markersGroup.clearLayers();
             capsuleMarkers = {};
+            filmMarkers = {};
 
             let capsules = getCapsules();
             let album = getAlbum();
 
+            // 1. 타임캡슐 렌더링
             capsules.forEach(cap => {
                 let collected = album.some(item => item.id === cap.id);
                 
@@ -359,55 +353,44 @@
                 let pinShadow = collected ? 'rgba(255,179,0,0.8)' : 'rgba(142,36,170,0.8)';
                 let pinEmoji = collected ? '🏆' : '⏳';
 
-                let w = config.capsule.size[0];
-                let h = config.capsule.size[1];
-                let pinSize = Math.round(w * 0.9);
-
                 let dropPinIcon = L.divIcon({
                     className: 'custom-droplet-pin',
                     html: `
-                        <div style="position:relative; width:${w}px; height:${h}px;">
-                            <div style="width:${pinSize}px; height:${pinSize}px; background:${pinBg}; border-radius:50% 50% 50% 0; transform:rotate(-45deg); position:absolute; top:0; left:0; border:2px solid white; box-shadow:0 3px 6px ${pinShadow};"></div>
-                            <div style="position:absolute; top:0; left:0; width:${pinSize}px; height:${pinSize}px; display:flex; align-items:center; justify-content:center; font-size:${config.capsule.font}px;">${pinEmoji}</div>
+                        <div style="position:relative; width:30px; height:38px;">
+                            <div style="width:27px; height:27px; background:${pinBg}; border-radius:50% 50% 50% 0; transform:rotate(-45deg); position:absolute; top:0; left:0; border:2px solid white; box-shadow:0 3px 6px ${pinShadow};"></div>
+                            <div style="position:absolute; top:0; left:0; width:27px; height:27px; display:flex; align-items:center; justify-content:center; font-size:12px;">${pinEmoji}</div>
                         </div>
                     `,
-                    iconSize: [w, h],
-                    iconAnchor: [w/2, h],
-                    popupAnchor: [0, -h]
+                    iconSize: [30, 38],
+                    iconAnchor: [15, 38],
+                    popupAnchor: [0, -38]
                 });
 
-                let marker = L.marker([cap.lat, cap.lon], {icon: dropPinIcon}).addTo(map);
+                let marker = L.marker([cap.lat, cap.lon], {icon: dropPinIcon});
                 marker.bindPopup(`<b>[${cap.region || '기타'}] ${cap.title}</b><br>${collected ? '수집 완료됨 (황금빛 핀)' : '미발견 타임캡슐 (보라색 핀)'}`);
                 
                 capsuleMarkers[cap.id] = { marker: marker, data: cap, collected: collected };
+                markersGroup.addLayer(marker);
             });
 
-            // 2. 필름 조각 마커 렌더링
-            for (let id in filmMarkers) {
-                map.removeLayer(filmMarkers[id]);
-            }
-            filmMarkers = {};
-
+            // 2. 필름 조각 렌더링
             cachedFilms.forEach(film => {
-                let fw = config.film.size[0];
-                let fh = config.film.size[1];
-
                 let miniFilmIcon = L.divIcon({
                     className: 'custom-mini-film',
                     html: `
                         <div style="
-                            font-size: ${config.film.font}px; 
+                            font-size: 20px; 
                             line-height: 1;
                             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
                             display: flex; align-items: center; justify-content: center;
-                            width: ${fw}px; height: ${fh}px;
+                            width: 24px; height: 24px;
                         ">🎞️</div>
                     `,
-                    iconSize: [fw, fh],
-                    iconAnchor: [fw/2, fh/2]
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
                 });
 
-                let marker = L.marker([film.lat, film.lon], {icon: miniFilmIcon}).addTo(map);
+                let marker = L.marker([film.lat, film.lon], {icon: miniFilmIcon});
                 
                 if (isAdminMode) {
                     marker.bindPopup("<b>🛠️ [관리자] 필름 조각</b><br>클릭하면 이 필름이 삭제됩니다.");
@@ -435,12 +418,9 @@
                 });
 
                 filmMarkers[film.id] = marker;
+                markersGroup.addLayer(marker);
             });
         }
-
-        map.on('zoomend', function() {
-            renderMarkers();
-        });
 
         let lastLat = null;
         let lastLon = null;
@@ -464,7 +444,7 @@
                         userMarker = L.marker([currentLat, currentLon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
                         map.setView([currentLat, currentLon], 14);
 
-                        renderMarkers();
+                        renderAllMarkers();
 
                         lastLat = currentLat;
                         lastLon = currentLon;
@@ -640,7 +620,7 @@
                     album.push(photoData);
                     localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
                     alert("🎉 성공적으로 사진을 도감에 수집했습니다!");
-                    renderMarkers();
+                    renderAllMarkers();
                 } else {
                     alert("이미 도감에 등록된 사진입니다!");
                 }
