@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 핀 정중앙 정렬 버전</title>
+    <title>타임슬립 탐험대 - 실시간 클라우드 공유 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Firebase SDK 추가 -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
     <style>
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
         #map { width: 100%; height: 100vh; }
@@ -174,6 +179,21 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // 🌟 제공해주신 실제 파이어베이스 설정 정보 적용 완료
+        const firebaseConfig = {
+            apiKey: "AIzaSyAjH7abrM1-0a7OG1KdSsIlIAJmR_b3ypw",
+            authDomain: "time-capsule-e8725.firebaseapp.com",
+            projectId: "time-capsule-e8725",
+            storageBucket: "time-capsule-e8725.firebasestorage.app",
+            messagingSenderId: "1021563795745",
+            appId: "1:1021563795745:web:6d5733948d3363f696a660"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let cachedCapsules = [];
+
         window.addEventListener('DOMContentLoaded', (event) => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('admin') === 'true') {
@@ -181,21 +201,11 @@
                 document.getElementById('admin-list-btn').style.display = 'inline-block';
             }
             loadUserData();
+            initRealtimeCapsules();
         });
 
         var map = L.map('map').setView([37.5665, 126.9780], 15);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/*.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        // 타일레이어 URL 정확히 수정
-        map.eachLayer(function(layer) {
-            if (layer instanceof L.TileLayer) {
-                map.removeLayer(layer);
-            }
-        });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
@@ -244,25 +254,34 @@
             localStorage.setItem('gwangmyeong_films', userFilms);
         }
 
-        const defaultCapsules = [
-            {
-                id: "capsule_default_1",
-                title: "1980년대 광명시장 전경",
-                region: "광명동",
-                lat: 37.4784,
-                lon: 126.8646,
-                url: "https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400",
-                desc: "활기 넘쳤던 옛 광명시장 입구의 풍경입니다."
-            }
-        ];
+        // 파이어베이스 실시간 동기화 리스너
+        function initRealtimeCapsules() {
+            db.collection("capsules").onSnapshot((snapshot) => {
+                cachedCapsules = [];
+                snapshot.forEach((doc) => {
+                    let data = doc.data();
+                    data.id = doc.id;
+                    cachedCapsules.push(data);
+                });
+
+                if (cachedCapsules.length === 0) {
+                    let defaultCap = {
+                        title: "1980년대 광명시장 전경",
+                        region: "광명동",
+                        lat: 37.4784,
+                        lon: 126.8646,
+                        url: "https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400",
+                        desc: "활기 넘쳤던 옛 광명시장 입구의 풍경입니다."
+                    };
+                    db.collection("capsules").add(defaultCap);
+                } else {
+                    renderCapsuleMarkers();
+                }
+            });
+        }
 
         function getCapsules() {
-            let saved = localStorage.getItem('gwangmyeong_capsules');
-            if (!saved) {
-                localStorage.setItem('gwangmyeong_capsules', JSON.stringify(defaultCapsules));
-                return defaultCapsules;
-            }
-            return JSON.parse(saved);
+            return cachedCapsules;
         }
 
         function getAlbum() {
@@ -280,7 +299,6 @@
             return R * c;
         }
 
-        // 🌟 물방울 핀 정중앙 정렬 완벽 개선 렌더링
         function renderCapsuleMarkers() {
             for (let id in capsuleMarkers) {
                 map.removeLayer(capsuleMarkers[id]);
@@ -682,48 +700,42 @@
             }
         }
 
+        // 파이어베이스 클라우드에 캡슐 저장/수정
         function saveCapsuleData(editId, title, region, desc, imageUrl, lat, lon) {
-            let capsules = getCapsules();
+            let capsuleData = {
+                title: title,
+                region: region,
+                lat: lat,
+                lon: lon,
+                url: imageUrl,
+                desc: desc || "역사 타임캡슐입니다."
+            };
 
+            let promise;
             if (editId) {
-                let index = capsules.findIndex(c => c.id === editId);
-                if (index !== -1) {
-                    capsules[index].title = title;
-                    capsules[index].region = region;
-                    capsules[index].desc = desc || "역사 타임캡슐입니다.";
-                    capsules[index].url = imageUrl;
-                    capsules[index].lat = lat;
-                    capsules[index].lon = lon;
-                    alert("✨ 타임캡슐이 성공적으로 수정되었습니다!");
-                }
+                promise = db.collection("capsules").doc(editId).set(capsuleData);
             } else {
-                let newCapsule = {
-                    id: "capsule_" + Date.now(),
-                    title: title,
-                    region: region,
-                    lat: lat,
-                    lon: lon,
-                    url: imageUrl,
-                    desc: desc || "새로 발굴된 역사 타임캡슐입니다."
-                };
-                capsules.push(newCapsule);
-                alert("✨ 새로운 타임캡슐이 성공적으로 등록되었습니다!");
+                promise = db.collection("capsules").add(capsuleData);
             }
 
-            localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
-            
-            resetAdminForm();
-            closeModal('admin-modal');
-            renderCapsuleMarkers();
+            promise.then(() => {
+                alert(editId ? "✨ 타임캡슐이 성공적으로 수정되었습니다!" : "✨ 새로운 타임캡슐이 성공적으로 등록되었습니다!");
+                resetAdminForm();
+                closeModal('admin-modal');
+            }).catch((error) => {
+                alert("저장 중 오류가 발생했습니다: " + error.message);
+            });
         }
 
+        // 파이어베이스 클라우드에서 캡슐 삭제
         function deleteCapsule(id) {
             if (confirm("정말 이 타임캡슐을 삭제하시겠습니까?")) {
-                let capsules = getCapsules();
-                capsules = capsules.filter(c => c.id !== id);
-                localStorage.setItem('gwangmyeong_capsules', JSON.stringify(capsules));
-                renderAdminList();
-                renderCapsuleMarkers();
+                db.collection("capsules").doc(id).delete().then(() => {
+                    renderAdminList();
+                    alert("삭제되었습니다.");
+                }).catch((error) => {
+                    alert("삭제 중 오류가 발생했습니다.");
+                });
             }
         }
 
