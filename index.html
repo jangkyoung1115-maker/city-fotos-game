@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 이미지 정중앙 정렬 완성 버전</title>
+    <title>타임슬립 탐험대 - 이미지 정중앙 완벽 정렬</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <!-- Firebase SDK 추가 -->
@@ -37,7 +37,7 @@
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            z-index: 9999; text-align: center; width: 90%; max-width: 420px; box-sizing: border-box;
+            z-index: 9999; text-align: center; width: 90%; max-width: 450px; box-sizing: border-box;
         }
         .modal h3 { margin-top: 0; color: #333; }
         .btn {
@@ -52,32 +52,29 @@
             width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px;
         }
 
-        /* 🌟 미니게임 사진 중앙 정렬 완벽 수정 */
+        /* 🌟 미니게임 사진 정중앙 정렬 완벽 개선 */
         #scratch-box {
-            width: 100%; height: 160px; background: #222; border-radius: 10px;
-            position: relative; overflow: hidden; margin: 15px 0; display: flex; align-items: center; justify-content: center;
+            width: 100%; height: 180px; background: #111; border-radius: 10px;
+            position: relative; overflow: hidden; margin: 15px 0; 
+            display: flex; align-items: center; justify-content: center;
         }
         #scratch-box img { 
-            width: 100%; height: 100%; object-fit: contain; /* 찌그러짐 방지 및 비율 유지 */
+            max-width: 100%; max-height: 100%; object-fit: contain;
             filter: blur(5px); transition: 0.5s; 
-            display: block; margin: auto;
+            margin: auto; display: block;
         }
         .scratch-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6);
             display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer; z-index: 2;
         }
 
-        .region-tabs { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid #eee; }
-        .region-tab { background: #eee; border: none; padding: 6px 12px; border-radius: 15px; font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap; }
-        .region-tab.active { background: #3f51b5; color: white; }
-
         .title-badge-box { background: #fff8e1; border: 1px solid #ffe082; padding: 8px; border-radius: 10px; margin-bottom: 10px; font-size: 12px; font-weight: bold; color: #f57f17; }
         
-        .slots-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 38vh; overflow-y: auto; padding: 4px; }
-        .photo-slot { aspect-ratio: 1; background: #f0f0f5; border: 2px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer; }
+        .slots-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 45vh; overflow-y: auto; padding: 4px; }
+        .photo-slot { aspect-ratio: 1; background: #f0f0f5; border: 2px dashed #ccc; border-radius: 6px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer; }
         .photo-slot.filled { border: 2px solid #ffd700; background: #fff; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .photo-slot img { width: 100%; height: 100%; object-fit: cover; }
-        .photo-slot span { font-size: 10px; color: #aaa; }
+        .photo-slot span { font-size: 9px; color: #aaa; }
 
         .scroll-list { max-height: 40vh; overflow-y: auto; text-align: left; margin-bottom: 10px; }
         .list-item { display: flex; gap: 8px; margin-bottom: 6px; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; align-items: center; justify-content: space-between; }
@@ -90,14 +87,14 @@
     <div class="top-panel">
         <span>🎞️ <span id="film-count" class="resource-badge">15</span></span>
         <span>👣 <span id="step-count" class="step-badge">0</span></span>
-        <button class="action-btn" onclick="openAlbum()">사진첩</button>
+        <button class="action-btn" onclick="openAlbum()">사진첩(도감)</button>
         <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">관리자 모드</button>
         <button id="admin-list-btn" class="action-btn list-btn" onclick="openAdminListModal()">캡슐 목록</button>
     </div>
 
     <!-- 하단 가이드 배너 -->
     <div id="guide-banner" class="guide-banner">
-        GPS 위치를 탐색 중입니다...
+        광명시 GPS 위치를 탐색 중입니다...
     </div>
 
     <!-- 지도 영역 -->
@@ -123,12 +120,11 @@
         <button id="complete-btn" class="btn btn-secondary" disabled onclick="savePhoto()">사진첩에 저장하기</button>
     </div>
 
-    <!-- 3. 행정구역별 도감 모달 -->
-    <div id="album-modal" class="modal" style="max-width: 400px;">
-        <h3>📖 나의 타임슬립 앨범</h3>
-        <div id="region-tabs-container" class="region-tabs"></div>
+    <!-- 3. 100개 슬롯 도감 모달 & 칭호 시스템 -->
+    <div id="album-modal" class="modal" style="max-width: 440px;">
+        <h3>📖 광명시 타임슬립 100선 도감</h3>
         <div id="region-title-box" class="title-badge-box">
-            현재 칭호: <span id="current-region-title">초보 탐험가</span> (0/20 수집)
+            현재 칭호: <span id="current-region-title">초보 탐험가</span> (0/100 수집)
         </div>
         <div id="slots-grid-container" class="slots-grid"></div>
         <button class="btn btn-secondary" onclick="closeModal('album-modal')" style="margin-top: 10px;">닫기</button>
@@ -152,8 +148,8 @@
         
         <input type="hidden" id="edit-capsule-id" value="">
 
-        <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 양평 옛 다리)">
-        <input type="text" id="admin-region" class="form-input" placeholder="행정구역 (예: 양평읍, 광명동)" value="양평읍">
+        <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 광명시 옛 거리)">
+        <input type="text" id="admin-region" class="form-input" placeholder="지역 설명 (예: 광명동, 철산동)" value="광명동">
 
         <div style="background: #fdfdfd; padding: 6px; border-radius: 8px; margin: 4px 0; border: 1px solid #ddd; text-align: left;">
             <label style="font-size: 11px; font-weight: bold; color: #333;">📸 사진 선택 (폰 갤러리)</label>
@@ -208,7 +204,7 @@
             initRealtimeCapsules();
         });
 
-        var map = L.map('map').setView([37.5665, 126.9780], 15);
+        var map = L.map('map').setView([37.4784, 126.8646], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -220,8 +216,8 @@
         var dustMarkers = [];
         var tempPickMarker = null;
         
-        let currentLat = 37.5665;
-        let currentLon = 126.9780;
+        let currentLat = 37.4784;
+        let currentLon = 126.8646;
         let activeCapsule = null;
         let currentMissionCapsule = null;
         let pickedLat = null;
@@ -232,7 +228,6 @@
         let accumulatedMeters = 0;
         let userFilms = 15;
         let isFirstGPS = true;
-        let activeRegionTab = "";
 
         function loadUserData() {
             let savedSteps = localStorage.getItem('gwangmyeong_steps');
@@ -338,42 +333,42 @@
             });
         }
 
-        function spawnDustObjects(centerLat, centerLon) {
-            let offsets = [
-                {dLat: 0.0003, dLon: 0.0003},
-                {dLat: -0.0003, dLon: 0.0004},
-                {dLat: 0.0004, dLon: -0.0003}
-            ];
+        function spawnGwangmyeongDust() {
+            dustMarkers.forEach(m => map.removeLayer(m));
+            dustMarkers = [];
 
-            offsets.forEach((offset) => {
-                let dLat = centerLat + offset.dLat;
-                let dLon = centerLon + offset.dLon;
+            let baseLat = 37.4784;
+            let baseLon = 126.8646;
+
+            for (let i = 0; i < 10; i++) {
+                let dLat = baseLat + (Math.random() - 0.5) * 0.03;
+                let dLon = baseLon + (Math.random() - 0.5) * 0.04;
 
                 let filmIcon = L.divIcon({
                     className: 'custom-film',
-                    html: '<div style="background:#1e88e5; width:11px; height:7px; border-radius:1.5px; border:1px solid white; box-shadow:0 0 3px rgba(30,136,229,0.8); display:flex; align-items:center; justify-content:center; font-size:4px;">🎞️</div>',
-                    iconSize: [11, 7],
-                    iconAnchor: [5.5, 3.5]
+                    html: '<div style="background:#1e88e5; width:12px; height:8px; border-radius:1.5px; border:1px solid white; box-shadow:0 0 4px rgba(30,136,229,0.9); display:flex; align-items:center; justify-content:center; font-size:5px;">🎞️</div>',
+                    iconSize: [12, 8],
+                    iconAnchor: [6, 4]
                 });
 
                 let marker = L.marker([dLat, dLon], {icon: filmIcon}).addTo(map);
-                marker.bindPopup("<b>🎞️ 푸른 필름 조각</b><br>터치해서 필름을 수집하세요!");
+                marker.bindPopup("<b>🎞️ 푸른 필름 조각</b><br>가까이 다가가서 수집하세요!");
                 
                 marker.on('click', function() {
                     let dist = getDistanceFromLatLonInMeters(currentLat, currentLon, dLat, dLon);
-                    if (dist <= 30) {
+                    if (dist <= 40) {
                         userFilms += 2;
                         document.getElementById('film-count').innerText = userFilms;
                         saveUserData();
                         alert("🎞️ 필름 조각을 수집했습니다! (빛바랜 필름 +2 획득)");
                         map.removeLayer(marker);
                     } else {
-                        alert("너무 멀리 있습니다! 필름 조각 가까이 다가가세요. (30m 이내)");
+                        alert("너무 멀리 있습니다! 필름 조각 가까이 다가가세요. (40m 이내)");
                     }
                 });
 
                 dustMarkers.push(marker);
-            });
+            }
         }
 
         let lastLat = null;
@@ -396,10 +391,10 @@
                         });
 
                         userMarker = L.marker([currentLat, currentLon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
-                        map.setView([currentLat, currentLon], 16);
+                        map.setView([currentLat, currentLon], 15);
 
                         renderCapsuleMarkers();
-                        spawnDustObjects(currentLat, currentLon);
+                        spawnGwangmyeongDust();
 
                         lastLat = currentLat;
                         lastLon = currentLon;
@@ -444,7 +439,7 @@
                     let banner = document.getElementById('guide-banner');
                     if (nearestCapsule) {
                         let isCollected = album.some(item => item.id === nearestCapsule.id);
-                        if (minDistance <= 10 && !isCollected) {
+                        if (minDistance <= 15 && !isCollected) {
                             banner.innerText = `🎯 [${nearestCapsule.title}] 발견 지점 도달!`;
                             if (!activeCapsule || activeCapsule.id !== nearestCapsule.id) {
                                 activeCapsule = nearestCapsule;
@@ -452,7 +447,7 @@
                                 document.getElementById('discovery-desc').innerText = nearestCapsule.desc;
                                 document.getElementById('discovery-modal').style.display = 'block';
                             }
-                        } else if (minDistance <= 50) {
+                        } else if (minDistance <= 100) {
                             banner.innerText = `✨ 근처에 타임캡슐(${nearestCapsule.title})이 있습니다! (${Math.round(minDistance)}m)`;
                         } else {
                             banner.innerText = `가장 가까운 타임캡슐까지 거리: 약 ${Math.round(minDistance)}m`;
@@ -611,7 +606,7 @@
 
             document.getElementById('edit-capsule-id').value = cap.id;
             document.getElementById('admin-title').value = cap.title;
-            document.getElementById('admin-region').value = cap.region || "양평읍";
+            document.getElementById('admin-region').value = cap.region || "광명동";
             document.getElementById('admin-url').value = cap.url;
             document.getElementById('admin-desc').value = cap.desc;
             
@@ -629,7 +624,7 @@
         function resetAdminForm() {
             document.getElementById('edit-capsule-id').value = "";
             document.getElementById('admin-title').value = "";
-            document.getElementById('admin-region').value = "양평읍";
+            document.getElementById('admin-region').value = "광명동";
             document.getElementById('admin-desc').value = "";
             document.getElementById('admin-file').value = "";
             document.getElementById('admin-url').value = "";
@@ -652,7 +647,7 @@
         function processAndSaveCapsule() {
             let editId = document.getElementById('edit-capsule-id').value;
             let title = document.getElementById('admin-title').value.trim();
-            let region = document.getElementById('admin-region').value.trim() || "양평읍";
+            let region = document.getElementById('admin-region').value.trim() || "광명동";
             let desc = document.getElementById('admin-desc').value.trim();
             let urlInput = document.getElementById('admin-url').value.trim();
             let fileInput = document.getElementById('admin-file');
@@ -741,72 +736,36 @@
         }
 
         function openAlbum() {
-            let capsules = getCapsules();
-            let regions = [...new Set(capsules.map(c => c.region || "기타"))];
-            
-            if (regions.length === 0) regions = ["양평읍"];
-            if (!activeRegionTab || !regions.includes(activeRegionTab)) {
-                activeRegionTab = regions[0];
-            }
-
-            renderAlbumTabs(regions);
-            renderAlbumSlots(activeRegionTab);
-
-            document.getElementById('album-modal').style.display = 'block';
-        }
-
-        function renderAlbumTabs(regions) {
-            let tabsContainer = document.getElementById('region-tabs-container');
-            tabsContainer.innerHTML = "";
-            regions.forEach(reg => {
-                let btn = document.createElement('button');
-                btn.className = `region-tab ${reg === activeRegionTab ? 'active' : ''}`;
-                btn.innerText = reg;
-                btn.onclick = () => {
-                    activeRegionTab = reg;
-                    openAlbum();
-                };
-                tabsContainer.appendChild(btn);
-            });
-        }
-
-        function renderAlbumSlots(region) {
-            let capsules = getCapsules().filter(c => (c.region || "기타") === region);
             let album = getAlbum();
-            let collectedInRegion = capsules.filter(c => album.some(item => item.id === c.id));
-            let count = collectedInRegion.length;
+            let count = album.length;
 
             let titleStr = "초보 탐험가";
-            if (count >= 20) titleStr = "전설의 타임슬립 마스터 🏆";
-            else if (count >= 15) titleStr = "마을 사학자";
-            else if (count >= 6) titleStr = "역사 복원가";
-            else if (count >= 1) titleStr = "기록 수집가";
+            if (count >= 100) titleStr = "전설의 광명 사학자 🏆";
+            else if (count >= 75) titleStr = "역사 복원 마스터";
+            else if (count >= 40) titleStr = "베테랑 탐험가";
+            else if (count >= 10) titleStr = "기록 수집가";
 
-            document.getElementById('current-region-title').innerText = `${titleStr} (${count}/20)`;
+            document.getElementById('current-region-title').innerText = `${titleStr} (${count}/100)`;
 
             let gridContainer = document.getElementById('slots-grid-container');
             gridContainer.innerHTML = "";
 
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 100; i++) {
                 let slotDiv = document.createElement('div');
                 slotDiv.className = "photo-slot";
 
-                if (i < capsules.length) {
-                    let cap = capsules[i];
-                    let collectedItem = album.find(item => item.id === cap.id);
-
-                    if (collectedItem) {
-                        slotDiv.className += " filled";
-                        slotDiv.innerHTML = `<img src="${collectedItem.url}" alt="${collectedItem.title}">`;
-                        slotDiv.onclick = () => openPhotoDetail(collectedItem.title, collectedItem.url, collectedItem.desc, collectedItem.date);
-                    } else {
-                        slotDiv.innerHTML = `<span>🔒</span>`;
-                    }
+                if (i < album.length) {
+                    let collectedItem = album[i];
+                    slotDiv.className += " filled";
+                    slotDiv.innerHTML = `<img src="${collectedItem.url}" alt="${collectedItem.title}">`;
+                    slotDiv.onclick = () => openPhotoDetail(collectedItem.title, collectedItem.url, collectedItem.desc, collectedItem.date);
                 } else {
-                    slotDiv.innerHTML = `<span>빈칸</span>`;
+                    slotDiv.innerHTML = `<span>🔒</span>`;
                 }
                 gridContainer.appendChild(slotDiv);
             }
+
+            document.getElementById('album-modal').style.display = 'block';
         }
 
         function openPhotoDetail(title, url, desc, date) {
