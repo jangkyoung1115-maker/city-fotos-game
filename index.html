@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 광명시 도심 맞춤형 필름 배치 버전</title>
+    <title>타임슬립 탐험대 - 관리자 직접 필름 배치 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <!-- Firebase SDK 추가 -->
@@ -89,7 +89,7 @@
         <span>👣 <span id="step-count" class="step-badge">0</span></span>
         <button class="action-btn" onclick="openAlbum()">사진첩(도감)</button>
         <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">관리자 모드</button>
-        <button id="admin-list-btn" class="action-btn list-btn" onclick="openAdminListModal()">캡슐 목록</button>
+        <button id="admin-list-btn" class="action-btn list-btn" onclick="openAdminListModal()">항목 관리</button>
     </div>
 
     <!-- 하단 가이드 배너 -->
@@ -142,39 +142,59 @@
         <button class="btn btn-secondary" onclick="closeModal('photo-detail-modal')" style="margin-top: 5px; padding: 8px;">닫기</button>
     </div>
 
-    <!-- 5. 관리자 모드 모달 -->
+    <!-- 5. 관리자 모드 모달 (타임캡슐 또는 필름 선택 등록) -->
     <div id="admin-modal" class="modal" style="max-width: 380px;">
-        <h3 id="admin-modal-title">🛠️ 타임캡슐 관리자 모드</h3>
+        <h3 id="admin-modal-title">🛠️ 관리자 배치 모드</h3>
         
         <input type="hidden" id="edit-capsule-id" value="">
 
-        <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 철산동 옛 거리)">
-        <input type="text" id="admin-region" class="form-input" placeholder="지역 설명 (예: 광명동, 철산동, 하안동 등)" value="광명동">
-
-        <div style="background: #fdfdfd; padding: 6px; border-radius: 8px; margin: 4px 0; border: 1px solid #ddd; text-align: left;">
-            <label style="font-size: 11px; font-weight: bold; color: #333;">📸 사진 선택 (폰 갤러리)</label>
-            <input type="file" id="admin-file" accept="image/*" class="form-input" style="margin-top: 2px; font-size: 11px; padding: 4px;">
-            <div style="font-size: 10px; color: #666; margin: 2px 0; text-align: center;">--- 또는 이미지 URL (추천) ---</div>
-            <input type="text" id="admin-url" class="form-input" placeholder="https:// 이미지 주소 입력" style="margin-bottom: 2px; padding: 6px;">
+        <!-- 등록할 항목 종류 선택 -->
+        <div style="margin-bottom: 10px; text-align: left;">
+            <label style="font-size: 11px; font-weight: bold; color: #333;">📌 배치할 항목 선택</label>
+            <select id="admin-item-type" class="form-input" onchange="toggleAdminFields()" style="margin-top: 4px;">
+                <option value="capsule">타임캡슐 (사진 + 설명)</option>
+                <option value="film">푸른 필름 조각 (+2 획득)</option>
+            </select>
         </div>
 
-        <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
+        <div id="capsule-fields">
+            <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 철산동 옛 거리)">
+            <input type="text" id="admin-region" class="form-input" placeholder="지역 설명 (예: 광명동, 철산동 등)" value="광명동">
+
+            <div style="background: #fdfdfd; padding: 6px; border-radius: 8px; margin: 4px 0; border: 1px solid #ddd; text-align: left;">
+                <label style="font-size: 11px; font-weight: bold; color: #333;">📸 사진 선택 (폰 갤러리)</label>
+                <input type="file" id="admin-file" accept="image/*" class="form-input" style="margin-top: 2px; font-size: 11px; padding: 4px;">
+                <div style="font-size: 10px; color: #666; margin: 2px 0; text-align: center;">--- 또는 이미지 URL (추천) ---</div>
+                <input type="text" id="admin-url" class="form-input" placeholder="https:// 이미지 주소 입력" style="margin-bottom: 2px; padding: 6px;">
+            </div>
+
+            <input type="text" id="admin-desc" class="form-input" placeholder="상세 설명">
+        </div>
+
+        <div id="film-fields" style="display:none; padding: 10px; background: #e3f2fd; border-radius: 8px; margin: 6px 0; font-size: 12px; color: #1565c0; font-weight: bold;">
+            🎞️ 지도 중심 위치에 푸른 필름 조각을 심습니다. (획득 시 필름 +2)
+        </div>
         
         <div style="background: #e8f5e9; padding: 8px; border-radius: 8px; margin: 6px 0; border: 1px solid #a5d6a7;">
             <div id="selected-coords-text" style="font-size: 11px; color: #2e7d32; font-weight: bold; margin-bottom: 4px;">📍 현재 지도 중심 위치로 자동 지정됨</div>
             <button class="btn" style="background: #3f51b5; margin-top: 0; padding: 6px; font-size: 11px;" onclick="startPickingLocation()">지도를 직접 터치해서 지정하기</button>
         </div>
 
-        <button id="admin-submit-btn" class="btn" style="background:#4caf50; margin-top: 6px; padding: 10px;" onclick="processAndSaveCapsule()">✨ 타임캡슐 등록하기</button>
+        <button id="admin-submit-btn" class="btn" style="background:#4caf50; margin-top: 6px; padding: 10px;" onclick="processAndSaveItem()">✨ 배치하기</button>
         <button id="admin-cancel-edit-btn" class="btn btn-secondary" style="display:none; margin-top: 4px; padding: 6px;" onclick="resetAdminForm()">수정 취소</button>
         
         <button class="btn btn-secondary" onclick="closeModal('admin-modal')" style="margin-top: 10px; padding: 10px;">닫기</button>
     </div>
 
-    <!-- 6. 독립된 등록된 캡슐 목록 모달 -->
-    <div id="admin-list-modal" class="modal" style="max-width: 380px;">
-        <h3>📂 등록된 캡슐 목록</h3>
-        <div id="admin-capsule-list" class="scroll-list"></div>
+    <!-- 6. 독립된 등록된 항목 관리 목록 모달 -->
+    <div id="admin-list-modal" class="modal" style="max-width: 400px;">
+        <h3>📂 등록된 항목 관리</h3>
+        <div style="font-size: 11px; color: #666; margin-bottom: 8px; text-align: left;">⏳ 타임캡슐 목록</div>
+        <div id="admin-capsule-list" class="scroll-list" style="max-height: 20vh;"></div>
+        
+        <div style="font-size: 11px; color: #666; margin: 10px 0 8px 0; text-align: left;">🎞️ 푸른 필름 조각 목록</div>
+        <div id="admin-film-list" class="scroll-list" style="max-height: 20vh;"></div>
+
         <button class="btn btn-secondary" onclick="closeModal('admin-list-modal')" style="margin-top: 10px; padding: 10px;">닫기</button>
     </div>
 
@@ -193,6 +213,7 @@
         const db = firebase.firestore();
 
         let cachedCapsules = [];
+        let cachedFilms = [];
 
         window.addEventListener('DOMContentLoaded', (event) => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -201,7 +222,7 @@
                 document.getElementById('admin-list-btn').style.display = 'inline-block';
             }
             loadUserData();
-            initRealtimeCapsules();
+            initRealtimeData();
         });
 
         var map = L.map('map').setView([37.4784, 126.8646], 14);
@@ -213,7 +234,7 @@
 
         var userMarker = null;
         var capsuleMarkers = {};
-        var dustMarkers = [];
+        var filmMarkers = {};
         var tempPickMarker = null;
         
         let currentLat = 37.4784;
@@ -253,7 +274,9 @@
             localStorage.setItem('gwangmyeong_films', userFilms);
         }
 
-        function initRealtimeCapsules() {
+        // 🌟 파이어베이스 실시간 동기화 (타임캡슐 + 필름 조각)
+        function initRealtimeData() {
+            // 타임캡슐 동기화
             db.collection("capsules").onSnapshot((snapshot) => {
                 cachedCapsules = [];
                 snapshot.forEach((doc) => {
@@ -275,6 +298,17 @@
                 } else {
                     renderCapsuleMarkers();
                 }
+            });
+
+            // 관리자가 심은 필름 조각 동기화
+            db.collection("admin_films").onSnapshot((snapshot) => {
+                cachedFilms = [];
+                snapshot.forEach((doc) => {
+                    let data = doc.data();
+                    data.id = doc.id;
+                    cachedFilms.push(data);
+                });
+                renderFilmMarkers();
             });
         }
 
@@ -333,61 +367,41 @@
             });
         }
 
-        // 🌟 광명시 도심 및 주거지역(산 제외, 타 지역 제외)에만 필름 400개 정밀 배치
-        function spawnGwangmyeongDust() {
-            dustMarkers.forEach(m => map.removeLayer(m));
-            dustMarkers = [];
+        // 🌟 관리자가 직접 등록한 필름 렌더링 및 수집 이벤트
+        function renderFilmMarkers() {
+            for (let id in filmMarkers) {
+                map.removeLayer(filmMarkers[id]);
+            }
+            filmMarkers = {};
 
-            // 광명시 핵심 동네 중심 좌표들 (광명동, 철산동, 하안동, 소하동, 일직동 시가지 중심)
-            let gwangmyeongHubs = [
-                {lat: 37.4784, lon: 126.8646}, // 광명동 (광명시장 주변)
-                {lat: 37.4815, lon: 126.8610}, // 광명동 주거지
-                {lat: 37.4760, lon: 126.8790}, // 철산동 (철산역 상업지구)
-                {lat: 37.4650, lon: 126.8780}, // 하안동 아파트단지
-                {lat: 37.4520, lon: 126.8850}, // 소하동 주거/상업지구
-                {lat: 37.4250, lon: 126.8880}, // 일직동 (KTX 광명역 및 새빛공원 인근)
-            ];
-
-            let spawnedCount = 0;
-            while (spawnedCount < 400) {
-                // 무작위로 중심 허브 하나를 선택
-                let hub = gwangmyeongHubs[Math.floor(Math.random() * gwangmyeongHubs.length)];
-                
-                // 허브 주변 밀집 배치 (산악 지형인 도덕산/가학산 북서측 및 시외곽 영역은 철저히 배제)
-                let dLat = hub.lat + (Math.random() - 0.5) * 0.035;
-                let dLon = hub.lon + (Math.random() - 0.5) * 0.045;
-
-                // 🌟 엄격한 광명시 도심 경계 필터링 (산림 지역 및 타 지역 좌표 원천 차단)
-                if (dLat < 37.415 || dLat > 37.495 || dLon < 126.845 || dLon > 126.905) {
-                    continue; // 광명시 바깥이면 생성 안 함
-                }
-
+            cachedFilms.forEach(film => {
                 let filmIcon = L.divIcon({
                     className: 'custom-film',
-                    html: '<div style="background:#1e88e5; width:10px; height:6px; border-radius:1px; border:1px solid white; box-shadow:0 0 3px rgba(30,136,229,0.9); display:flex; align-items:center; justify-content:center; font-size:4px;">🎞️</div>',
-                    iconSize: [10, 6],
-                    iconAnchor: [5, 3]
+                    html: '<div style="background:#1e88e5; width:12px; height:8px; border-radius:1.5px; border:1px solid white; box-shadow:0 0 4px rgba(30,136,229,0.9); display:flex; align-items:center; justify-content:center; font-size:5px;">🎞️</div>',
+                    iconSize: [12, 8],
+                    iconAnchor: [6, 4]
                 });
 
-                let marker = L.marker([dLat, dLon], {icon: filmIcon}).addTo(map);
+                let marker = L.marker([film.lat, film.lon], {icon: filmIcon}).addTo(map);
                 marker.bindPopup("<b>🎞️ 푸른 필름 조각</b><br>가까이 다가가서 수집하세요!");
                 
                 marker.on('click', function() {
-                    let dist = getDistanceFromLatLonInMeters(currentLat, currentLon, dLat, dLon);
+                    let dist = getDistanceFromLatLonInMeters(currentLat, currentLon, film.lat, film.lon);
                     if (dist <= 40) {
                         userFilms += 2;
                         document.getElementById('film-count').innerText = userFilms;
                         saveUserData();
                         alert("🎞️ 필름 조각을 수집했습니다! (빛바랜 필름 +2 획득)");
-                        map.removeLayer(marker);
+                        
+                        // 서버에서 해당 필름 삭제
+                        db.collection("admin_films").doc(film.id).delete();
                     } else {
                         alert("너무 멀리 있습니다! 필름 조각 가까이 다가가세요. (40m 이내)");
                     }
                 });
 
-                dustMarkers.push(marker);
-                spawnedCount++;
-            }
+                filmMarkers[film.id] = marker;
+            });
         }
 
         let lastLat = null;
@@ -413,7 +427,7 @@
                         map.setView([currentLat, currentLon], 14);
 
                         renderCapsuleMarkers();
-                        spawnGwangmyeongDust();
+                        renderFilmMarkers();
 
                         lastLat = currentLat;
                         lastLon = currentLon;
@@ -512,7 +526,18 @@
         function startPickingLocation() {
             isPickingMode = true;
             document.getElementById('admin-modal').style.display = 'none';
-            alert("🗺️ 지도를 터치하여 타임캡슐을 배치할 장소를 선택해주세요!");
+            alert("🗺️ 지도를 터치하여 배치할 장소를 선택해주세요!");
+        }
+
+        function toggleAdminFields() {
+            let type = document.getElementById('admin-item-type').value;
+            if (type === 'capsule') {
+                document.getElementById('capsule-fields').style.display = 'block';
+                document.getElementById('film-fields').style.display = 'none';
+            } else {
+                document.getElementById('capsule-fields').style.display = 'none';
+                document.getElementById('film-fields').style.display = 'block';
+            }
         }
 
         function startMission() {
@@ -595,23 +620,38 @@
         }
 
         function renderAdminList() {
-            let listDiv = document.getElementById('admin-capsule-list');
-            listDiv.innerHTML = "";
-            let capsules = getCapsules();
+            let capsuleListDiv = document.getElementById('admin-capsule-list');
+            let filmListDiv = document.getElementById('admin-film-list');
+            
+            capsuleListDiv.innerHTML = "";
+            filmListDiv.innerHTML = "";
 
+            let capsules = getCapsules();
             if (capsules.length === 0) {
-                listDiv.innerHTML = "<p style='color:#888; font-size:11px; text-align:center;'>등록된 캡슐이 없습니다.</p>";
+                capsuleListDiv.innerHTML = "<p style='color:#888; font-size:11px; text-align:center;'>등록된 캡슐이 없습니다.</p>";
             } else {
                 capsules.forEach((cap) => {
-                    listDiv.innerHTML += `
+                    capsuleListDiv.innerHTML += `
                         <div class="list-item">
                             <img src="${cap.url}" alt="미리보기">
                             <div style="flex-grow:1; margin-left:6px; overflow:hidden;">
                                 <div style="font-weight:bold; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">[${cap.region || '기타'}] ${cap.title}</div>
-                                <div style="font-size:9px; color:#888;">${cap.lat.toFixed(3)}, ${cap.lon.toFixed(3)}</div>
                             </div>
                             <button class="btn btn-edit" onclick="closeModal('admin-list-modal'); editCapsule('${cap.id}')">수정</button>
                             <button class="btn btn-danger" onclick="deleteCapsule('${cap.id}')">삭제</button>
+                        </div>
+                    `;
+                });
+            }
+
+            if (cachedFilms.length === 0) {
+                filmListDiv.innerHTML = "<p style='color:#888; font-size:11px; text-align:center;'>배치된 필름 조각이 없습니다.</p>";
+            } else {
+                cachedFilms.forEach((film, index) => {
+                    filmListDiv.innerHTML += `
+                        <div class="list-item">
+                            <div style="flex-grow:1; font-size:11px; font-weight:bold;">🎞️ 필름 조각 #${index+1} (${film.lat.toFixed(3)}, ${film.lon.toFixed(3)})</div>
+                            <button class="btn btn-danger" onclick="deleteFilm('${film.id}')">삭제</button>
                         </div>
                     `;
                 });
@@ -622,6 +662,9 @@
             let capsules = getCapsules();
             let cap = capsules.find(c => c.id === id);
             if (!cap) return;
+
+            document.getElementById('admin-item-type').value = 'capsule';
+            toggleAdminFields();
 
             document.getElementById('edit-capsule-id').value = cap.id;
             document.getElementById('admin-title').value = cap.title;
@@ -647,6 +690,8 @@
             document.getElementById('admin-desc').value = "";
             document.getElementById('admin-file').value = "";
             document.getElementById('admin-url').value = "";
+            document.getElementById('admin-item-type').value = 'capsule';
+            toggleAdminFields();
             
             let center = map.getCenter();
             pickedLat = center.lat;
@@ -658,62 +703,78 @@
                 tempPickMarker = null;
             }
 
-            document.getElementById('admin-modal-title').innerText = "🛠️ 타임캡슐 관리자 모드";
-            document.getElementById('admin-submit-btn').innerText = "✨ 타임캡슐 등록하기";
+            document.getElementById('admin-modal-title').innerText = "🛠️ 관리자 배치 모드";
+            document.getElementById('admin-submit-btn').innerText = "✨ 배치하기";
             document.getElementById('admin-cancel-edit-btn').style.display = 'none';
         }
 
-        function processAndSaveCapsule() {
+        function processAndSaveItem() {
+            let itemType = document.getElementById('admin-item-type').value;
             let editId = document.getElementById('edit-capsule-id').value;
-            let title = document.getElementById('admin-title').value.trim();
-            let region = document.getElementById('admin-region').value.trim() || "광명동";
-            let desc = document.getElementById('admin-desc').value.trim();
-            let urlInput = document.getElementById('admin-url').value.trim();
-            let fileInput = document.getElementById('admin-file');
 
-            if (!title) {
-                alert("타임캡슐 제목을 입력해주세요!");
-                return;
-            }
             if (pickedLat === null || pickedLon === null) {
                 let center = map.getCenter();
                 pickedLat = center.lat;
                 pickedLon = center.lng;
             }
 
-            if (fileInput.files && fileInput.files[0]) {
-                let file = fileInput.files[0];
-                let reader = new FileReader();
-
-                reader.onload = function(e) {
-                    let img = new Image();
-                    img.src = e.target.result;
-                    img.onload = function() {
-                        let canvas = document.createElement('canvas');
-                        let max_size = 300;
-                        let width = img.width;
-                        let height = img.height;
-
-                        if (width > height) {
-                            if (width > max_size) { height *= max_size / width; width = max_size; }
-                        } else {
-                            if (height > max_size) { width *= max_size / height; height = max_size; }
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
-                        let ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-
-                        let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                        saveCapsuleData(editId, title, region, desc, compressedDataUrl, pickedLat, pickedLon);
-                    };
-                };
-                reader.readAsDataURL(file);
-            } else if (urlInput) {
-                saveCapsuleData(editId, title, region, desc, urlInput, pickedLat, pickedLon);
+            if (itemType === 'film') {
+                // 필름 조각 등록
+                let filmData = { lat: pickedLat, lon: pickedLon };
+                db.collection("admin_films").add(filmData).then(() => {
+                    alert("✨ 푸른 필름 조각이 성공적으로 배치되었습니다!");
+                    resetAdminForm();
+                    closeModal('admin-modal');
+                }).catch((error) => {
+                    alert("필름 배치 중 오류 발생: " + error.message);
+                });
             } else {
-                alert("사진 파일을 선택하거나 이미지 URL을 입력해주세요!");
+                // 타임캡슐 등록/수정
+                let title = document.getElementById('admin-title').value.trim();
+                let region = document.getElementById('admin-region').value.trim() || "광명동";
+                let desc = document.getElementById('admin-desc').value.trim();
+                let urlInput = document.getElementById('admin-url').value.trim();
+                let fileInput = document.getElementById('admin-file');
+
+                if (!title) {
+                    alert("타임캡슐 제목을 입력해주세요!");
+                    return;
+                }
+
+                if (fileInput.files && fileInput.files[0]) {
+                    let file = fileInput.files[0];
+                    let reader = new FileReader();
+
+                    reader.onload = function(e) {
+                        let img = new Image();
+                        img.src = e.target.result;
+                        img.onload = function() {
+                            let canvas = document.createElement('canvas');
+                            let max_size = 300;
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > height) {
+                                if (width > max_size) { height *= max_size / width; width = max_size; }
+                            } else {
+                                if (height > max_size) { width *= max_size / height; height = max_size; }
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            let ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                            saveCapsuleData(editId, title, region, desc, compressedDataUrl, pickedLat, pickedLon);
+                        };
+                    };
+                    reader.readAsDataURL(file);
+                } else if (urlInput) {
+                    saveCapsuleData(editId, title, region, desc, urlInput, pickedLat, pickedLon);
+                } else {
+                    alert("사진 파일을 선택하거나 이미지 URL을 입력해주세요!");
+                }
             }
         }
 
@@ -748,8 +809,15 @@
                 db.collection("capsules").doc(id).delete().then(() => {
                     renderAdminList();
                     alert("삭제되었습니다.");
-                }).catch((error) => {
-                    alert("삭제 중 오류가 발생했습니다.");
+                });
+            }
+        }
+
+        function deleteFilm(id) {
+            if (confirm("이 필름 조각을 삭제하시겠습니까?")) {
+                db.collection("admin_films").doc(id).delete().then(() => {
+                    renderAdminList();
+                    alert("필름이 삭제되었습니다.");
                 });
             }
         }
