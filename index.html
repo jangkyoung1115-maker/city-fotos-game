@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 실시간 클라우드 공유 버전</title>
+    <title>타임슬립 탐험대 - 이미지 정중앙 정렬 완성 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <!-- Firebase SDK 추가 -->
@@ -52,14 +52,19 @@
             width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px;
         }
 
+        /* 🌟 미니게임 사진 중앙 정렬 완벽 수정 */
         #scratch-box {
-            width: 100%; height: 150px; background: #ddd; border-radius: 10px;
+            width: 100%; height: 160px; background: #222; border-radius: 10px;
             position: relative; overflow: hidden; margin: 15px 0; display: flex; align-items: center; justify-content: center;
         }
-        #scratch-box img { width: 100%; height: 100%; object-fit: cover; filter: blur(5px); transition: 0.5s; }
+        #scratch-box img { 
+            width: 100%; height: 100%; object-fit: contain; /* 찌그러짐 방지 및 비율 유지 */
+            filter: blur(5px); transition: 0.5s; 
+            display: block; margin: auto;
+        }
         .scratch-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #888;
-            display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6);
+            display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer; z-index: 2;
         }
 
         .region-tabs { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid #eee; }
@@ -179,7 +184,6 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 🌟 제공해주신 실제 파이어베이스 설정 정보 적용 완료
         const firebaseConfig = {
             apiKey: "AIzaSyAjH7abrM1-0a7OG1KdSsIlIAJmR_b3ypw",
             authDomain: "time-capsule-e8725.firebaseapp.com",
@@ -254,7 +258,6 @@
             localStorage.setItem('gwangmyeong_films', userFilms);
         }
 
-        // 파이어베이스 실시간 동기화 리스너
         function initRealtimeCapsules() {
             db.collection("capsules").onSnapshot((snapshot) => {
                 cachedCapsules = [];
@@ -700,7 +703,6 @@
             }
         }
 
-        // 파이어베이스 클라우드에 캡슐 저장/수정
         function saveCapsuleData(editId, title, region, desc, imageUrl, lat, lon) {
             let capsuleData = {
                 title: title,
@@ -727,7 +729,6 @@
             });
         }
 
-        // 파이어베이스 클라우드에서 캡슐 삭제
         function deleteCapsule(id) {
             if (confirm("정말 이 타임캡슐을 삭제하시겠습니까?")) {
                 db.collection("capsules").doc(id).delete().then(() => {
