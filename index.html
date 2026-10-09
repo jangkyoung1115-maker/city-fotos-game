@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 광명시 전역 필름 400개 확장 버전</title>
+    <title>타임슬립 탐험대 - 광명시 도심 맞춤형 필름 배치 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <!-- Firebase SDK 추가 -->
@@ -204,7 +204,7 @@
             initRealtimeCapsules();
         });
 
-        var map = L.map('map').setView([37.4784, 126.8646], 13);
+        var map = L.map('map').setView([37.4784, 126.8646], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -333,17 +333,34 @@
             });
         }
 
-        // 🌟 광명시 전역(철산, 하안, 소하, 일직, 광명동 등)에 걸쳐 총 400개의 푸른 필름 조각 대폭 확충 배치
+        // 🌟 광명시 도심 및 주거지역(산 제외, 타 지역 제외)에만 필름 400개 정밀 배치
         function spawnGwangmyeongDust() {
             dustMarkers.forEach(m => map.removeLayer(m));
             dustMarkers = [];
 
-            let baseLat = 37.4784;
-            let baseLon = 126.8646;
+            // 광명시 핵심 동네 중심 좌표들 (광명동, 철산동, 하안동, 소하동, 일직동 시가지 중심)
+            let gwangmyeongHubs = [
+                {lat: 37.4784, lon: 126.8646}, // 광명동 (광명시장 주변)
+                {lat: 37.4815, lon: 126.8610}, // 광명동 주거지
+                {lat: 37.4760, lon: 126.8790}, // 철산동 (철산역 상업지구)
+                {lat: 37.4650, lon: 126.8780}, // 하안동 아파트단지
+                {lat: 37.4520, lon: 126.8850}, // 소하동 주거/상업지구
+                {lat: 37.4250, lon: 126.8880}, // 일직동 (KTX 광명역 및 새빛공원 인근)
+            ];
 
-            for (let i = 0; i < 400; i++) {
-                let dLat = baseLat + (Math.random() - 0.5) * 0.08;
-                let dLon = baseLon + (Math.random() - 0.5) * 0.10;
+            let spawnedCount = 0;
+            while (spawnedCount < 400) {
+                // 무작위로 중심 허브 하나를 선택
+                let hub = gwangmyeongHubs[Math.floor(Math.random() * gwangmyeongHubs.length)];
+                
+                // 허브 주변 밀집 배치 (산악 지형인 도덕산/가학산 북서측 및 시외곽 영역은 철저히 배제)
+                let dLat = hub.lat + (Math.random() - 0.5) * 0.035;
+                let dLon = hub.lon + (Math.random() - 0.5) * 0.045;
+
+                // 🌟 엄격한 광명시 도심 경계 필터링 (산림 지역 및 타 지역 좌표 원천 차단)
+                if (dLat < 37.415 || dLat > 37.495 || dLon < 126.845 || dLon > 126.905) {
+                    continue; // 광명시 바깥이면 생성 안 함
+                }
 
                 let filmIcon = L.divIcon({
                     className: 'custom-film',
@@ -369,6 +386,7 @@
                 });
 
                 dustMarkers.push(marker);
+                spawnedCount++;
             }
         }
 
@@ -412,7 +430,6 @@
                                 document.getElementById('step-count').innerText = totalSteps;
                                 saveUserData();
 
-                                // 🌟 정확히 1000걸음마다 필름 1개 충전
                                 if (totalSteps % 1000 === 0) {
                                     userFilms += 1;
                                     document.getElementById('film-count').innerText = userFilms;
