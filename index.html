@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 폴라로이드 필름 아이콘 버전</title>
+    <title>타임슬립 탐험대 - 미니 필름 아이콘 버전</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <!-- Firebase SDK 추가 -->
@@ -357,7 +357,7 @@
             });
         }
 
-        // 🌟 2번 시안: 미니 폴라로이드 액자 프레임 스타일 필름 아이콘
+        // 🌟 테두리 없이 아담하고 깔끔한 필름 문양 아이콘
         function renderFilmMarkers() {
             for (let id in filmMarkers) {
                 map.removeLayer(filmMarkers[id]);
@@ -365,33 +365,21 @@
             filmMarkers = {};
 
             cachedFilms.forEach(film => {
-                let polaroidFilmIcon = L.divIcon({
-                    className: 'custom-polaroid-film',
+                let miniFilmIcon = L.divIcon({
+                    className: 'custom-mini-film',
                     html: `
                         <div style="
-                            width: 32px; height: 36px; 
-                            background: #ffffff; 
-                            border-radius: 4px; 
-                            border: 1px solid #ccc; 
-                            box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-                            padding: 2px 2px 6px 2px;
-                            box-sizing: border-box;
-                            display: flex; flex-direction: column; align-items: center; justify-content: center;
-                        ">
-                            <div style="
-                                width: 26px; height: 22px; 
-                                background: #e3f2fd; 
-                                border-radius: 2px; 
-                                display: flex; align-items: center; justify-content: center;
-                                font-size: 13px;
-                            ">🎞️</div>
-                        </div>
+                            font-size: 20px; 
+                            line-height: 1;
+                            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                            display: flex; align-items: center; justify-content: center;
+                        ">🎞️</div>
                     `,
-                    iconSize: [32, 36],
-                    iconAnchor: [16, 36]
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
                 });
 
-                let marker = L.marker([film.lat, film.lon], {icon: polaroidFilmIcon}).addTo(map);
+                let marker = L.marker([film.lat, film.lon], {icon: miniFilmIcon}).addTo(map);
                 
                 if (isAdminMode) {
                     marker.bindPopup("<b>🛠️ [관리자] 필름 조각</b><br>클릭하면 이 필름이 삭제됩니다.");
@@ -428,7 +416,7 @@
             if (isBulkFilmMode) {
                 btn.innerText = "필름 연속 배치: ON ✨";
                 btn.className = "action-btn bulk-btn active";
-                alert("✨ 필름 연속 배치 모드가 켜졌습니다! 이제 지도를 클릭하는 곳마다 폴라로이드 필름이 바로 생성됩니다.");
+                alert("✨ 필름 연속 배치 모드가 켜졌습니다! 이제 지도를 클릭하는 곳마다 미니 필름이 바로 생성됩니다.");
             } else {
                 btn.innerText = "필름 연속 배치: OFF";
                 btn.className = "action-btn bulk-btn";
