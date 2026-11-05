@@ -9,7 +9,7 @@
 :root{--navy:rgba(4,20,38,.88);--line:#8edfff;--cyan:#69dcff}
 *{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0;background:#061b2c;font-family:Arial,"Noto Sans KR",sans-serif}
 #map{position:absolute;inset:0}
-.maplibregl-canvas{filter:grayscale(.18) sepia(.28) hue-rotate(164deg) saturate(1.9) brightness(.78) contrast(1.24)}
+.maplibregl-canvas{filter:none}
 .maplibregl-ctrl-group{background:#09243b!important;border:1px solid #6abfe8!important}
 .maplibregl-ctrl button{filter:invert(1)}
 .brand{position:absolute;z-index:5;top:18px;left:20px;color:#f3fbff;text-shadow:0 2px 8px #001;pointer-events:none}
@@ -42,7 +42,7 @@
 </div>
 <button class="reopen" id="reopen" onclick="document.getElementById('guide').style.display='block';this.style.display='none'">수집 안내</button>
 <div class="legend">TIME CAPSULES　💎 현대　💠 중간 시대　▤ 오래된 기억</div>
-<div class="note">딥 블루 3D 도시 · 건물 입체화 및 푸른 도로 발광 시안</div>
+<div class="note">광명시 경계 안쪽만 옅은 남색으로 강조 · 3D 사선 지도</div>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -59,7 +59,7 @@ firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 const map=new maplibregl.Map({
  container:'map',
- style:'https://tiles.openfreemap.org/styles/dark',
+ style:'https://tiles.openfreemap.org/styles/liberty',
  center:[126.8646,37.4784],
  zoom:15.2,
  pitch:62,
@@ -95,85 +95,91 @@ function addFilm(film){
  .setLngLat([film.lon,film.lat]).setPopup(new maplibregl.Popup({offset:18}).setText('크리스털 필름 파편')).addTo(map);
  filmMarkers.push(marker);
 }
-function add3DBuildings(){
+let gwangmyeongBoundary = null;
+
+function addGwangmyeongDesign(geometry){
+ gwangmyeongBoundary = geometry;
  const style=map.getStyle();
  const layers=style.layers||[];
  const label=layers.find(l=>l.type==='symbol'&&l.layout&&l.layout['text-field']);
  const before=label?label.id:undefined;
 
- // Buildings: use available footprints even when height attributes are missing.
- if(style.sources.openmaptiles){
-  if(!map.getLayer('gwangmyeong-building-footprints')){
-   map.addLayer({
-    id:'gwangmyeong-building-footprints',
-    source:'openmaptiles','source-layer':'building',
-    type:'fill',
-    minzoom:13,
-    paint:{
-     'fill-color':'#102f50',
-     'fill-opacity':0.92,
-     'fill-outline-color':'#4c9ac5'
-    }
-   },before);
-  }
-  if(!map.getLayer('gwangmyeong-3d-buildings')){
-   map.addLayer({
-    id:'gwangmyeong-3d-buildings',
-    source:'openmaptiles','source-layer':'building',
-    type:'fill-extrusion',
-    minzoom:13,
-    paint:{
-     'fill-extrusion-color':[
-      'interpolate',['linear'],
-      ['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],8],
-      0,'#102b49',12,'#17466f',35,'#236b9b',80,'#398bb5'
-     ],
-     'fill-extrusion-height':[
-      'max',6,
-      ['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],8]
-     ],
-     'fill-extrusion-base':[
-      'coalesce',['to-number',['get','render_min_height']],['to-number',['get','min_height']],0
-     ],
-     'fill-extrusion-opacity':0.96,
-     'fill-extrusion-vertical-gradient':true
-    }
-   },before);
-  }
+ // Only the Gwangmyeong administrative area receives the translucent blue treatment.
+ if(!map.getSource('gwangmyeong-boundary')){
+  map.addSource('gwangmyeong-boundary',{type:'geojson',data:{
+   type:'Feature',properties:{name:'광명시'},geometry:geometry
+  }});
+ }
+ if(!map.getLayer('gwangmyeong-blue-fill')){
+  map.addLayer({id:'gwangmyeong-blue-fill',type:'fill',source:'gwangmyeong-boundary',
+   paint:{'fill-color':'#244f83','fill-opacity':0.34}},before);
+ }
+ if(!map.getLayer('gwangmyeong-boundary-glow')){
+  map.addLayer({id:'gwangmyeong-boundary-glow',type:'line',source:'gwangmyeong-boundary',
+   paint:{'line-color':'#168dff','line-width':7,'line-opacity':0.38,'line-blur':3.5}},before);
+ }
+ if(!map.getLayer('gwangmyeong-boundary-core')){
+  map.addLayer({id:'gwangmyeong-boundary-core',type:'line',source:'gwangmyeong-boundary',
+   paint:{'line-color':'#8ce8ff','line-width':1.7,'line-opacity':0.95}},before);
  }
 
- // Blue luminous road network drawn from the vector road data, not a second basemap.
  if(style.sources.openmaptiles){
-  const roadFilter=['in',['get','class'],['literal',['motorway','trunk','primary','secondary','tertiary','minor','service','residential']]];
-  if(!map.getLayer('gwangmyeong-road-glow')){
-   map.addLayer({
-    id:'gwangmyeong-road-glow',type:'line',source:'openmaptiles',
-    'source-layer':'transportation',filter:roadFilter,minzoom:12,
+  const buildingFilter=['all',['==',['geometry-type'],'Polygon'],['within',geometry]];
+  if(!map.getLayer('gwangmyeong-3d-buildings')){
+   map.addLayer({id:'gwangmyeong-3d-buildings',source:'openmaptiles','source-layer':'building',
+    type:'fill-extrusion',minzoom:13,filter:buildingFilter,
     paint:{
-     'line-color':'#087dff',
-     'line-width':['interpolate',['linear'],['zoom'],12,1.5,16,5,19,9],
-     'line-opacity':0.72,
-     'line-blur':4.5
-    }
-   },before);
+     'fill-extrusion-color':['interpolate',['linear'],
+      ['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],9],
+      0,'#536f89',12,'#6d8ca8',35,'#8eabc1',80,'#b3c9dc'],
+     'fill-extrusion-height':['max',6,
+      ['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],9]],
+     'fill-extrusion-base':['coalesce',['to-number',['get','render_min_height']],['to-number',['get','min_height']],0],
+     'fill-extrusion-opacity':0.92,
+     'fill-extrusion-vertical-gradient':true
+    }},before);
+  }
+
+  const roadFilter=['all',
+   ['in',['get','class'],['literal',['motorway','trunk','primary','secondary','tertiary','minor','service','residential']]],
+   ['within',geometry]
+  ];
+  if(!map.getLayer('gwangmyeong-road-glow')){
+   map.addLayer({id:'gwangmyeong-road-glow',type:'line',source:'openmaptiles',
+    'source-layer':'transportation',filter:roadFilter,minzoom:12,
+    paint:{'line-color':'#168dff','line-width':['interpolate',['linear'],['zoom'],12,1.5,16,5,19,8],
+     'line-opacity':0.58,'line-blur':3.8}},before);
   }
   if(!map.getLayer('gwangmyeong-road-core')){
-   map.addLayer({
-    id:'gwangmyeong-road-core',type:'line',source:'openmaptiles',
+   map.addLayer({id:'gwangmyeong-road-core',type:'line',source:'openmaptiles',
     'source-layer':'transportation',filter:roadFilter,minzoom:12,
-    paint:{
-     'line-color':'#70dfff',
-     'line-width':['interpolate',['linear'],['zoom'],12,0.45,16,1.25,19,2.1],
-     'line-opacity':0.9,
-     'line-blur':0.25
-    }
-   },before);
+    paint:{'line-color':'#8ceaff','line-width':['interpolate',['linear'],['zoom'],12,0.45,16,1.2,19,1.8],
+     'line-opacity':0.88}},before);
   }
  }
 }
+
+function loadGwangmyeongBoundary(){
+ // Nominatim returns the administrative boundary as GeoJSON; no hand-drawn polygon.
+ const url='https://nominatim.openstreetmap.org/search?format=geojson&polygon_geojson=1&limit=1&q='+
+  encodeURIComponent('Gwangmyeong-si, Gyeonggi-do, South Korea');
+ fetch(url,{headers:{'Accept':'application/geo+json'}})
+  .then(r=>{if(!r.ok)throw new Error('행정경계 서버 응답 오류');return r.json();})
+  .then(data=>{
+   const feature=(data.features||[]).find(f=>f.geometry&&
+    (f.geometry.type==='Polygon'||f.geometry.type==='MultiPolygon'));
+   if(!feature)throw new Error('광명시 행정경계 데이터를 찾지 못했습니다.');
+   addGwangmyeongDesign(feature.geometry);
+   const b=new maplibregl.LngLatBounds();
+   const visit=coords=>{if(typeof coords[0]==='number')b.extend(coords);else coords.forEach(visit);};
+   visit(feature.geometry.coordinates);
+   map.fitBounds(b,{padding:55,maxZoom:14.8,duration:900});
+  })
+  .catch(err=>console.warn('광명시 경계 레이어:',err));
+}
 map.on('load',()=>{
- add3DBuildings();
- map.setFog({color:'rgb(3,12,29)','high-color':'rgb(8,39,78)','space-color':'rgb(1,6,19)','horizon-blend':0.12});
+ loadGwangmyeongBoundary();
+ map.setFog({color:'rgb(218,231,239)','high-color':'rgb(174,204,225)','space-color':'rgb(232,240,246)','horizon-blend':0.08});
 });
 db.collection('capsules').onSnapshot(snap=>{
  capsuleMarkers.forEach(m=>m.remove());capsuleMarkers.length=0;
