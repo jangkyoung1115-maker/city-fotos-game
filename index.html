@@ -540,8 +540,8 @@
                     if (layer.type === 'background' || layer.type === 'fill') {
                         map3d.setLayoutProperty(layer.id, 'visibility', 'none');
                     } else if (layer.type === 'fill-extrusion') {
-                        map3d.setPaintProperty(layer.id, 'fill-extrusion-color', '#a9c4d7');
-                        map3d.setPaintProperty(layer.id, 'fill-extrusion-opacity', 0.48);
+                        // 위성사진의 실제 지붕·숲·도로 디테일을 가리는 회색 3D 건물은 완전히 숨깁니다.
+                        map3d.setLayoutProperty(layer.id, 'visibility', 'none');
                     }
                 } catch (e) {}
             });
@@ -563,12 +563,7 @@
                     const beforeFill = firstBuilding?.id || firstSymbol?.id;
                     map3d.addLayer({id:'gwangmyeong-navy-area',type:'fill',source:'gwangmyeong-boundary',paint:{'fill-color':'#183f70','fill-opacity':0.25}}, beforeFill);
 
-                    // 원래 지도 스타일에 건물 높이 레이어가 없을 때만 별도 3D 건물을 추가합니다.
-                    const hasExtrusion = (map3d.getStyle().layers || []).some(layer => layer.type === 'fill-extrusion');
-                    const hasBuildings = !!(map3d.getStyle().sources || {}).openmaptiles;
-                    if (!hasExtrusion && hasBuildings) {
-                        map3d.addLayer({id:'gwangmyeong-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:13,paint:{'fill-extrusion-color':'#a9c4d7','fill-extrusion-height':['max',4,['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],7]],'fill-extrusion-base':['coalesce',['to-number',['get','render_min_height']],0],'fill-extrusion-opacity':0.48}}, firstSymbol?.id);
-                    }
+                    // 별도 회색 3D 건물 레이어는 추가하지 않습니다. 위성사진의 실제 도시 표면을 유지합니다.
                     const symbolId = (map3d.getStyle().layers || []).find(layer => layer.type === 'symbol')?.id;
                     map3d.addLayer({id:'gwangmyeong-edge-glow',type:'line',source:'gwangmyeong-boundary',paint:{'line-color':'#55bfff','line-width':4,'line-opacity':0.28,'line-blur':2.5}}, symbolId);
                     map3d.addLayer({id:'gwangmyeong-edge-core',type:'line',source:'gwangmyeong-boundary',paint:{'line-color':'#b4eaff','line-width':1.2,'line-opacity':0.88}}, symbolId);
