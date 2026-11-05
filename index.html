@@ -91,6 +91,55 @@
         .scroll-list { max-height: 40vh; overflow-y: auto; text-align: left; margin-bottom: 10px; }
         .list-item { display: flex; gap: 8px; margin-bottom: 6px; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; align-items: center; justify-content: space-between; }
         .list-item img { width: 35px; height: 35px; border-radius: 4px; object-fit: cover; }
+
+        /* 시간의 층위에 따른 크리스털 타임캡슐 마커 */
+        .crystal-capsule-marker {
+            background: transparent !important;
+            border: 0 !important;
+        }
+        .crystal-capsule-marker img {
+            width: 48px;
+            height: 68px;
+            object-fit: contain;
+            display: block;
+            filter: drop-shadow(0 4px 7px rgba(16, 55, 110, 0.28));
+            transform-origin: 50% 85%;
+        }
+        .crystal-capsule-marker.is-collected img {
+            filter: drop-shadow(0 0 8px rgba(255, 220, 120, 0.95)) saturate(1.18);
+        }
+
+        .crystal-film-marker { background: transparent !important; border: 0 !important; }
+        .crystal-film-marker img {
+            width: 34px; height: 34px; object-fit: contain; display: block;
+            filter: drop-shadow(0 2px 5px rgba(20,80,170,.65));
+            animation: shard-float 2.8s ease-in-out infinite;
+        }
+        @keyframes shard-float { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-4px) rotate(4deg); } }
+        #film-assembly-overlay {
+            display:none; position:fixed; inset:0; z-index:12000;
+            background:radial-gradient(ellipse at center, rgba(34,67,120,.92), rgba(5,10,24,.98));
+            align-items:center; justify-content:center; flex-direction:column; overflow:hidden;
+            color:#fff; text-align:center;
+        }
+        #film-assembly-stage { position:relative; width:min(88vw,520px); height:300px; }
+        .assembly-fragment { position:absolute; width:76px; height:64px; object-fit:contain; left:var(--sx); top:var(--sy); opacity:0;
+            filter:drop-shadow(0 0 9px rgba(80,190,255,.9)); animation:fragment-gather 1.85s cubic-bezier(.2,.75,.25,1) var(--delay) forwards; }
+        @keyframes fragment-gather {
+            0% { left:var(--sx); top:var(--sy); opacity:0; transform:translate(-50%,-50%) rotate(var(--rot)) scale(.55); }
+            12% { opacity:1; }
+            72% { left:50%; top:50%; opacity:1; transform:translate(-50%,-50%) rotate(220deg) scale(.72); }
+            100% { left:50%; top:50%; opacity:0; transform:translate(-50%,-50%) rotate(360deg) scale(.12); }
+        }
+        #assembly-flash { position:absolute; left:50%; top:50%; width:30px; height:30px; border-radius:50%;
+            transform:translate(-50%,-50%); background:#fff; opacity:0; box-shadow:0 0 25px 18px #70dfff,0 0 80px 45px rgba(95,120,255,.7);
+            animation:assembly-flash 2.5s ease-out forwards; }
+        @keyframes assembly-flash { 0%,55% {opacity:0; transform:translate(-50%,-50%) scale(.2)} 68% {opacity:1; transform:translate(-50%,-50%) scale(1.2)} 100% {opacity:0; transform:translate(-50%,-50%) scale(5)} }
+        #completed-film-reveal { position:absolute; left:50%; top:50%; width:min(82vw,440px); max-height:220px; object-fit:contain;
+            opacity:0; transform:translate(-50%,-50%) scale(.55); filter:drop-shadow(0 0 18px rgba(70,190,255,.95));
+            animation:completed-film-appear 1.25s ease-out 1.75s forwards; }
+        @keyframes completed-film-appear { 0% {opacity:0; transform:translate(-50%,-50%) scale(.55) rotate(-8deg)} 65% {opacity:1; transform:translate(-50%,-50%) scale(1.08) rotate(2deg)} 100% {opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0)} }
+        #assembly-caption { margin-top:4px; font-size:15px; letter-spacing:.08em; text-shadow:0 0 12px #65cfff; }
     </style>
 </head>
 <body>
@@ -118,8 +167,18 @@
         <h3 id="discovery-title">⏳ 타임캡슐 발견!</h3>
         <p id="discovery-desc">추억의 옛 풍경이 담긴 타임캡슐입니다.</p>
         <p style="font-size: 13px; color: #666;">필요 자원: 빛바랜 필름 10개</p>
-        <button class="btn" onclick="startMission()">필름 10개 소모하고 개봉하기</button>
+        <button class="btn" onclick="startMission()">필름 파편 10개를 조합해 개봉하기</button>
         <button class="btn btn-secondary" onclick="closeModal('discovery-modal')">나중에 하기</button>
+    </div>
+
+    <!-- 필름 파편 조합 애니메이션 -->
+    <div id="film-assembly-overlay" aria-live="polite">
+        <div id="film-assembly-stage">
+            <div id="assembly-fragments"></div>
+            <div id="assembly-flash"></div>
+            <img id="completed-film-reveal" src="assets/film/completed_crystal_film.png" alt="완성된 크리스털 필름">
+        </div>
+        <div id="assembly-caption">흩어진 기억이 하나의 필름으로 이어집니다</div>
     </div>
 
     <!-- 2. 미니게임 (먼지 닦기) 팝업 -->
@@ -163,6 +222,15 @@
 
         <input type="text" id="admin-title" class="form-input" placeholder="타임캡슐 제목 (예: 철산동 옛 거리)">
         <input type="text" id="admin-region" class="form-input" placeholder="지역 설명 (예: 광명동, 철산동 등)" value="광명동">
+
+        <label for="admin-capsule-type" style="display:block; text-align:left; font-size:12px; font-weight:bold; margin-top:8px;">💎 사진의 시대에 맞는 크리스털 선택</label>
+        <select id="admin-capsule-type" class="form-input">
+            <option value="modern">최근 / 현대 — 투명한 크리스털</option>
+            <option value="mid-era">중간 시대 — 오로라 유리</option>
+            <option value="old">오래된 사진 — 층이 쌓인 유리</option>
+            <option value="ancient">아주 오래된 사진 — 풍화된 결정</option>
+        </select>
+        <input type="text" id="admin-photo-year" class="form-input" placeholder="사진 연도 (예: 1980년대, 선택사항)">
 
         <div style="background: #fdfdfd; padding: 6px; border-radius: 8px; margin: 4px 0; border: 1px solid #ddd; text-align: left;">
             <label style="font-size: 11px; font-weight: bold; color: #333;">📸 사진 선택 (폰 갤러리)</label>
@@ -295,6 +363,8 @@
                     let defaultCap = {
                         title: "1980년대 광명시장 전경",
                         region: "광명동",
+                        capsuleType: "modern",
+                        photoYear: "1980년대",
                         lat: 37.4784,
                         lon: 126.8646,
                         url: "https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400",
@@ -349,25 +419,24 @@
             capsules.forEach(cap => {
                 let collected = album.some(item => item.id === cap.id);
                 
-                let pinBg = collected ? '#ffb300' : '#8e24aa';
-                let pinShadow = collected ? 'rgba(255,179,0,0.8)' : 'rgba(142,36,170,0.8)';
-                let pinEmoji = collected ? '🏆' : '⏳';
-
-                let dropPinIcon = L.divIcon({
-                    className: 'custom-droplet-pin',
-                    html: `
-                        <div style="position:relative; width:30px; height:38px;">
-                            <div style="width:27px; height:27px; background:${pinBg}; border-radius:50% 50% 50% 0; transform:rotate(-45deg); position:absolute; top:0; left:0; border:2px solid white; box-shadow:0 3px 6px ${pinShadow};"></div>
-                            <div style="position:absolute; top:0; left:0; width:27px; height:27px; display:flex; align-items:center; justify-content:center; font-size:12px;">${pinEmoji}</div>
-                        </div>
-                    `,
-                    iconSize: [30, 38],
-                    iconAnchor: [15, 38],
-                    popupAnchor: [0, -38]
+                // 이전에 등록된 캡슐은 modern 유형으로 표시합니다.
+                let capsuleType = cap.capsuleType || 'modern';
+                let capsuleImage = `assets/capsule/capsule_${
+                    capsuleType === 'mid-era' ? '02_mid-era' :
+                    capsuleType === 'old' ? '03_old' :
+                    capsuleType === 'ancient' ? '04_ancient' : '01_modern'
+                }.png`;
+                let crystalIcon = L.divIcon({
+                    className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
+                    html: `<img src="${capsuleImage}" alt="크리스털 타임캡슐">`,
+                    iconSize: [48, 68],
+                    iconAnchor: [24, 62],
+                    popupAnchor: [0, -58]
                 });
 
-                let marker = L.marker([cap.lat, cap.lon], {icon: dropPinIcon});
-                marker.bindPopup(`<b>[${cap.region || '기타'}] ${cap.title}</b><br>${collected ? '수집 완료됨 (황금빛 핀)' : '미발견 타임캡슐 (보라색 핀)'}`);
+                let marker = L.marker([cap.lat, cap.lon], {icon: crystalIcon});
+                let yearLabel = cap.photoYear ? `<br>사진 시기: ${cap.photoYear}` : '';
+                marker.bindPopup(`<b>[${cap.region || '기타'}] ${cap.title}</b>${yearLabel}<br>${collected ? '수집 완료' : '미발견 타임캡슐'}`);
                 
                 capsuleMarkers[cap.id] = { marker: marker, data: cap, collected: collected };
                 markersGroup.addLayer(marker);
@@ -375,19 +444,16 @@
 
             // 2. 필름 조각 렌더링
             cachedFilms.forEach(film => {
+                let filmIdText = String(film.id || 'film');
+                let filmHash = 0;
+                for (let i = 0; i < filmIdText.length; i++) filmHash = (filmHash + filmIdText.charCodeAt(i) * (i + 1)) % 997;
+                let shardNumber = (filmHash % 18) + 1;
+                let shardImage = `assets/film/film_fragment_${String(shardNumber).padStart(2, '0')}.png`;
                 let miniFilmIcon = L.divIcon({
-                    className: 'custom-mini-film',
-                    html: `
-                        <div style="
-                            font-size: 20px; 
-                            line-height: 1;
-                            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                            display: flex; align-items: center; justify-content: center;
-                            width: 24px; height: 24px;
-                        ">🎞️</div>
-                    `,
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12]
+                    className: 'crystal-film-marker',
+                    html: `<img src="${shardImage}" alt="푸른 크리스털 필름 파편">`,
+                    iconSize: [38, 38],
+                    iconAnchor: [19, 19]
                 });
 
                 let marker = L.marker([film.lat, film.lon], {icon: miniFilmIcon});
@@ -395,7 +461,7 @@
                 if (isAdminMode) {
                     marker.bindPopup("<b>🛠️ [관리자] 필름 조각</b><br>클릭하면 이 필름이 삭제됩니다.");
                 } else {
-                    marker.bindPopup("<b>🎞️ 푸른 필름 조각</b><br>가까이 다가가서 수집하세요!");
+                    marker.bindPopup("<b>🎞️ 크리스털 필름 파편</b><br>가까이 다가가서 수집하세요!");
                 }
                 
                 marker.on('click', function() {
@@ -409,7 +475,7 @@
                             userFilms += 2;
                             document.getElementById('film-count').innerText = userFilms;
                             saveUserData();
-                            alert("🎞️ 필름 조각을 수집했습니다! (빛바랜 필름 +2 획득)");
+                            alert("💎 크리스털 필름 파편을 수집했습니다! (+2개)");
                             db.collection("admin_films").doc(film.id).delete();
                         } else {
                             alert("너무 멀리 있습니다! 필름 조각 가까이 다가가세요. (40m 이내)");
@@ -568,25 +634,53 @@
             }
         }
 
+        function playFilmAssembly(onComplete) {
+            const overlay = document.getElementById('film-assembly-overlay');
+            const layer = document.getElementById('assembly-fragments');
+            const reveal = document.getElementById('completed-film-reveal');
+            layer.innerHTML = '';
+            reveal.style.animation = 'none';
+            reveal.offsetHeight;
+            reveal.style.animation = '';
+            for (let i = 0; i < 12; i++) {
+                const shard = document.createElement('img');
+                const n = ((i * 7 + Math.floor(Math.random() * 18)) % 18) + 1;
+                shard.className = 'assembly-fragment';
+                shard.src = `assets/film/film_fragment_${String(n).padStart(2, '0')}.png`;
+                shard.style.setProperty('--sx', `${8 + Math.random() * 78}%`);
+                shard.style.setProperty('--sy', `${8 + Math.random() * 68}%`);
+                shard.style.setProperty('--delay', `${Math.random() * 0.35}s`);
+                shard.style.setProperty('--rot', `${Math.round(Math.random() * 150 - 75)}deg`);
+                layer.appendChild(shard);
+            }
+            overlay.style.display = 'flex';
+            window.setTimeout(() => {
+                overlay.style.display = 'none';
+                layer.innerHTML = '';
+                if (typeof onComplete === 'function') onComplete();
+            }, 3400);
+        }
+
         function startMission() {
             if (userFilms < 10) {
-                alert("빛바랜 필름이 부족합니다! (필요: 10개)");
+                alert("크리스털 필름 파편이 부족합니다! (필요: 10개)");
                 return;
             }
             userFilms -= 10;
             document.getElementById('film-count').innerText = userFilms;
             saveUserData();
-            
+
             currentMissionCapsule = activeCapsule;
             closeModal('discovery-modal');
-            
-            document.getElementById('target-photo').src = currentMissionCapsule.url;
-            document.getElementById('target-photo').style.filter = 'blur(5px)';
-            document.getElementById('overlay-text').style.display = 'flex';
-            document.getElementById('complete-btn').disabled = true;
-            document.getElementById('complete-btn').className = 'btn btn-secondary';
 
-            document.getElementById('mission-modal').style.display = 'block';
+            playFilmAssembly(() => {
+                document.getElementById('target-photo').src = currentMissionCapsule.url;
+                document.getElementById('target-photo').style.filter = 'blur(5px)';
+                document.getElementById('overlay-text').style.display = 'flex';
+                document.getElementById('complete-btn').disabled = true;
+                document.getElementById('complete-btn').className = 'btn btn-secondary';
+                document.getElementById('mission-modal').style.display = 'block';
+            });
         }
 
         function wipeDust() {
@@ -678,6 +772,8 @@
             document.getElementById('edit-capsule-id').value = cap.id;
             document.getElementById('admin-title').value = cap.title;
             document.getElementById('admin-region').value = cap.region || "광명동";
+            document.getElementById('admin-capsule-type').value = cap.capsuleType || "modern";
+            document.getElementById('admin-photo-year').value = cap.photoYear || "";
             document.getElementById('admin-url').value = cap.url;
             document.getElementById('admin-desc').value = cap.desc;
             
@@ -696,6 +792,8 @@
             document.getElementById('edit-capsule-id').value = "";
             document.getElementById('admin-title').value = "";
             document.getElementById('admin-region').value = "광명동";
+            document.getElementById('admin-capsule-type').value = "modern";
+            document.getElementById('admin-photo-year').value = "";
             document.getElementById('admin-desc').value = "";
             document.getElementById('admin-file').value = "";
             document.getElementById('admin-url').value = "";
@@ -719,6 +817,8 @@
             let editId = document.getElementById('edit-capsule-id').value;
             let title = document.getElementById('admin-title').value.trim();
             let region = document.getElementById('admin-region').value.trim() || "광명동";
+            let capsuleType = document.getElementById('admin-capsule-type').value || "modern";
+            let photoYear = document.getElementById('admin-photo-year').value.trim();
             let desc = document.getElementById('admin-desc').value.trim();
             let urlInput = document.getElementById('admin-url').value.trim();
             let fileInput = document.getElementById('admin-file');
@@ -758,20 +858,22 @@
                         ctx.drawImage(img, 0, 0, width, height);
 
                         let compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                        saveCapsuleData(editId, title, region, desc, compressedDataUrl, pickedLat, pickedLon);
+                        saveCapsuleData(editId, title, region, desc, compressedDataUrl, pickedLat, pickedLon, capsuleType, photoYear);
                     };
                 };
                 reader.readAsDataURL(file);
             } else if (urlInput) {
-                saveCapsuleData(editId, title, region, desc, urlInput, pickedLat, pickedLon);
+                saveCapsuleData(editId, title, region, desc, urlInput, pickedLat, pickedLon, capsuleType, photoYear);
             } else {
                 alert("사진 파일을 선택하거나 이미지 URL을 입력해주세요!");
             }
         }
 
-        function saveCapsuleData(editId, title, region, desc, imageUrl, lat, lon) {
+        function saveCapsuleData(editId, title, region, desc, imageUrl, lat, lon, capsuleType, photoYear) {
             let capsuleData = {
                 title: title,
+                capsuleType: capsuleType || "modern",
+                photoYear: photoYear || "",
                 region: region,
                 lat: lat,
                 lon: lon,
