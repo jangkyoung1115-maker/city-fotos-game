@@ -9,7 +9,7 @@
 :root{--navy:rgba(4,20,38,.88);--line:#8edfff;--cyan:#69dcff}
 *{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0;background:#061b2c;font-family:Arial,"Noto Sans KR",sans-serif}
 #map{position:absolute;inset:0}
-.maplibregl-canvas{filter:grayscale(.2) sepia(.22) hue-rotate(158deg) saturate(1.55) brightness(.82) contrast(1.12)}
+.maplibregl-canvas{filter:grayscale(.18) sepia(.28) hue-rotate(164deg) saturate(1.9) brightness(.78) contrast(1.24)}
 .maplibregl-ctrl-group{background:#09243b!important;border:1px solid #6abfe8!important}
 .maplibregl-ctrl button{filter:invert(1)}
 .brand{position:absolute;z-index:5;top:18px;left:20px;color:#f3fbff;text-shadow:0 2px 8px #001;pointer-events:none}
@@ -42,7 +42,7 @@
 </div>
 <button class="reopen" id="reopen" onclick="document.getElementById('guide').style.display='block';this.style.display='none'">수집 안내</button>
 <div class="legend">TIME CAPSULES　💎 현대　💠 중간 시대　▤ 오래된 기억</div>
-<div class="note">3D 사선 지도 시안 · 지도 회전/기울기 가능</div>
+<div class="note">딥 블루 3D 도시 · 건물 입체화 및 푸른 도로 발광 시안</div>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -59,7 +59,7 @@ firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 const map=new maplibregl.Map({
  container:'map',
- style:'https://tiles.openfreemap.org/styles/liberty',
+ style:'https://tiles.openfreemap.org/styles/dark',
  center:[126.8646,37.4784],
  zoom:15.2,
  pitch:62,
@@ -96,24 +96,84 @@ function addFilm(film){
  filmMarkers.push(marker);
 }
 function add3DBuildings(){
- const layers=map.getStyle().layers||[];
+ const style=map.getStyle();
+ const layers=style.layers||[];
  const label=layers.find(l=>l.type==='symbol'&&l.layout&&l.layout['text-field']);
  const before=label?label.id:undefined;
- if(!map.getLayer('gwangmyeong-3d-buildings')){
-  map.addLayer({id:'gwangmyeong-3d-buildings',source:'openmaptiles','source-layer':'building',type:'fill-extrusion',
-   minzoom:14,
-   filter:['!=',['get','hide_3d'],true],
-   paint:{
-    'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],['get','height'],8],0,'#183d58',30,'#287ba0',80,'#63c8e9'],
-    'fill-extrusion-height':['interpolate',['linear'],['zoom'],14,0,['coalesce',['get','render_height'],['get','height'],8]],
-    'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],
-    'fill-extrusion-opacity':0.82
-   }},before);
+
+ // Buildings: use available footprints even when height attributes are missing.
+ if(style.sources.openmaptiles){
+  if(!map.getLayer('gwangmyeong-building-footprints')){
+   map.addLayer({
+    id:'gwangmyeong-building-footprints',
+    source:'openmaptiles','source-layer':'building',
+    type:'fill',
+    minzoom:13,
+    paint:{
+     'fill-color':'#102f50',
+     'fill-opacity':0.92,
+     'fill-outline-color':'#4c9ac5'
+    }
+   },before);
+  }
+  if(!map.getLayer('gwangmyeong-3d-buildings')){
+   map.addLayer({
+    id:'gwangmyeong-3d-buildings',
+    source:'openmaptiles','source-layer':'building',
+    type:'fill-extrusion',
+    minzoom:13,
+    paint:{
+     'fill-extrusion-color':[
+      'interpolate',['linear'],
+      ['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],8],
+      0,'#102b49',12,'#17466f',35,'#236b9b',80,'#398bb5'
+     ],
+     'fill-extrusion-height':[
+      'max',6,
+      ['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],8]
+     ],
+     'fill-extrusion-base':[
+      'coalesce',['to-number',['get','render_min_height']],['to-number',['get','min_height']],0
+     ],
+     'fill-extrusion-opacity':0.96,
+     'fill-extrusion-vertical-gradient':true
+    }
+   },before);
+  }
+ }
+
+ // Blue luminous road network drawn from the vector road data, not a second basemap.
+ if(style.sources.openmaptiles){
+  const roadFilter=['in',['get','class'],['literal',['motorway','trunk','primary','secondary','tertiary','minor','service','residential']]];
+  if(!map.getLayer('gwangmyeong-road-glow')){
+   map.addLayer({
+    id:'gwangmyeong-road-glow',type:'line',source:'openmaptiles',
+    'source-layer':'transportation',filter:roadFilter,minzoom:12,
+    paint:{
+     'line-color':'#087dff',
+     'line-width':['interpolate',['linear'],['zoom'],12,1.5,16,5,19,9],
+     'line-opacity':0.72,
+     'line-blur':4.5
+    }
+   },before);
+  }
+  if(!map.getLayer('gwangmyeong-road-core')){
+   map.addLayer({
+    id:'gwangmyeong-road-core',type:'line',source:'openmaptiles',
+    'source-layer':'transportation',filter:roadFilter,minzoom:12,
+    paint:{
+     'line-color':'#70dfff',
+     'line-width':['interpolate',['linear'],['zoom'],12,0.45,16,1.25,19,2.1],
+     'line-opacity':0.9,
+     'line-blur':0.25
+    }
+   },before);
+  }
  }
 }
 map.on('load',()=>{
  add3DBuildings();
- map.setFog({color:'rgb(5,24,42)','high-color':'rgb(15,75,112)','space-color':'rgb(2,12,25)','horizon-blend':0.08});
+ map.setFog({color:'rgb(3,12,29)','high-color':'rgb(8,39,78)','space-color':'rgb(1,6,19)','horizon-blend':0.12});
 });
 db.collection('capsules').onSnapshot(snap=>{
  capsuleMarkers.forEach(m=>m.remove());capsuleMarkers.length=0;
