@@ -112,12 +112,43 @@
         }
 
         .crystal-film-marker { background: transparent !important; border: 0 !important; }
-        .crystal-film-marker img {
-            width: 100%; height: 100%; object-fit: contain; display: block;
-            filter: drop-shadow(0 2px 5px rgba(20,80,170,.65));
-            animation: shard-float 2.8s ease-in-out infinite;
+        .film-marker-art { position:relative; width:58px; height:48px; overflow:visible; }
+        .film-marker-art img {
+            position:absolute; left:50%; top:0; width:46px; height:28px;
+            object-fit:contain; display:block; transform:translateX(-50%);
+            filter:drop-shadow(0 0 5px rgba(82,220,255,.9)) drop-shadow(0 0 9px rgba(164,95,255,.5));
+            animation:shard-hover 2.8s ease-in-out infinite;
         }
-        @keyframes shard-float { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-4px) rotate(4deg); } }
+        .film-marker-pin {
+            position:absolute; left:50%; top:25px; width:2px; height:15px;
+            transform:translateX(-50%);
+            background:linear-gradient(to bottom,rgba(224,250,255,.95),rgba(66,206,255,.65));
+            box-shadow:0 0 5px rgba(71,210,255,.9);
+        }
+        .film-marker-ground {
+            position:absolute; left:50%; bottom:0; width:34px; height:9px;
+            transform:translateX(-50%); border:1px solid rgba(77,218,255,.75);
+            border-radius:50%;
+            background:radial-gradient(ellipse,rgba(67,205,255,.34),rgba(47,104,220,.12) 58%,transparent 74%);
+            box-shadow:0 0 9px rgba(49,190,255,.48);
+        }
+        @keyframes shard-hover {
+            0%,100% { transform:translate(-50%,0) rotate(-2deg); }
+            50% { transform:translate(-50%,-2px) rotate(2deg); }
+        }
+        .flat-count-marker-wrap { background:transparent !important; border:0 !important; }
+        .flat-count-marker {
+            width:100%; height:100%; box-sizing:border-box; border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            color:#082014; font-size:14px; font-weight:800;
+            border:3px solid rgba(235,255,235,.8);
+            background:radial-gradient(circle at 35% 28%,#baff8d,#64d34f 70%,#35a83e);
+            box-shadow:none;
+        }
+        .flat-count-marker.gold {
+            color:#332000; border-color:rgba(255,246,194,.9);
+            background:radial-gradient(circle at 35% 28%,#ffe78a,#f3bd32 72%,#d99812);
+        }
         #film-assembly-overlay {
             display:none; position:fixed; inset:0; z-index:12000;
             background:radial-gradient(ellipse at center, rgba(34,67,120,.92), rgba(5,10,24,.98));
@@ -143,15 +174,11 @@
         @keyframes completed-film-appear { 0% {opacity:0; transform:translate(-50%,-50%) scale(.55) rotate(-8deg)} 65% {opacity:1; transform:translate(-50%,-50%) scale(1.08) rotate(2deg)} 100% {opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0)} }
         #assembly-caption { margin-top:4px; font-size:15px; letter-spacing:.08em; text-shadow:0 0 12px #65cfff; }
 
-        /* D+F+E 디자인 1차 적용: 기존 Leaflet/Firebase 기능은 유지 */
-        body { background:#10243a; }
-        #map { background:#dce8d7; }
-        /* 실제 지도 타일의 색을 부드럽고 풍부하게 보정합니다.
-           이 단계는 회화적 색감 보정이며, 건물의 실제 3D 형상을 새로 만들지는 않습니다. */
-        #map .leaflet-tile-pane {
-            filter: saturate(1.22) contrast(1.06) brightness(1.025) sepia(.075);
-        }
-        #map .leaflet-overlay-pane { filter: saturate(1.08); }
+        /* 위성지도 원본의 색과 도로·건물 디테일을 그대로 유지합니다. */
+        body { background:#07172a; }
+        #map { background:#10243a; }
+        #map .leaflet-tile-pane { filter:none; }
+        #map .leaflet-overlay-pane { filter:none; }
         .top-panel {
             background:linear-gradient(115deg,rgba(9,28,55,.90),rgba(34,57,91,.82),rgba(81,63,122,.78));
             color:#f2f7ff; border:1px solid rgba(137,220,255,.42);
@@ -168,9 +195,6 @@
         .crystal-capsule-marker img {
             filter:drop-shadow(0 0 8px rgba(98,220,255,.55)) drop-shadow(0 5px 7px rgba(16,35,80,.35));
         }
-        .crystal-film-marker img {
-            filter:drop-shadow(0 0 7px rgba(82,220,255,.95)) drop-shadow(0 0 15px rgba(164,95,255,.55));
-        }
         .leaflet-popup-content-wrapper {
             border-radius:14px; border:1px solid rgba(107,206,255,.45);
             box-shadow:0 8px 28px rgba(18,38,76,.24);
@@ -178,15 +202,7 @@
         .leaflet-control-zoom a {
             color:#315b83 !important; background:rgba(247,251,255,.94) !important;
         }
-        /* 계절감은 지도 위에 얹는 미세한 색감으로만 표현합니다. 실제 위성/건물 데이터 변경은 아닙니다. */
-        #map:after {
-            content:""; position:absolute; inset:0; pointer-events:none; z-index:350;
-            background:
-              radial-gradient(ellipse at 12% 18%,rgba(255,183,213,.10),transparent 34%),
-              radial-gradient(ellipse at 86% 78%,rgba(255,190,104,.08),transparent 38%),
-              linear-gradient(145deg,rgba(118,190,160,.045),rgba(120,150,220,.045));
-            mix-blend-mode:soft-light;
-        }
+        /* 지도 전체에 색 필터를 씌우지 않습니다. 광명시 내부만 경계 레이어로 어둡게 처리합니다. */
 
         /* Missing local PNG assets use a coherent inline crystal fallback. */
         .crystal-fallback {
@@ -355,24 +371,14 @@
 
         var map = L.map('map').setView([37.4784, 126.8646], 14);
 
-        // CARTO Voyager: 무료 발급받은 개인 API 키를 입력하면 타일을 불러옵니다.
-        const cartoKey = localStorage.getItem('gwangmyeong_carto_key') || '';
-        const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(cartoKey);
+        // Esri World Imagery 위성지도: 별도 CARTO 키 입력 없이 사용합니다.
+        const tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
         const baseTiles = L.tileLayer(tileUrl, {
-            subdomains: 'abcd',
-            maxZoom: 20,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            maxZoom: 19,
+            maxNativeZoom: 19,
+            attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
             crossOrigin: true
         }).addTo(map);
-        if (!cartoKey) {
-            setTimeout(() => {
-                const key = prompt('지도 표시를 위해 CARTO 무료 API 키를 입력해 주세요.\n키 발급: https://www.carto.com/basemaps/apikey/index.html');
-                if (key && key.trim()) {
-                    localStorage.setItem('gwangmyeong_carto_key', key.trim());
-                    location.reload();
-                }
-            }, 500);
-        }
         map.on('tileerror', function(e) {
             console.warn('지도 타일을 불러오지 못했습니다. 네트워크 또는 타일 제공자 상태를 확인하세요.', e);
         });
@@ -402,7 +408,7 @@
                     interactive: false,
                     style: {
                         color: '#42dfff', weight: 12, opacity: 0.22,
-                        fillColor: '#123d78', fillOpacity: 0.05,
+                        fillColor: '#071d3c', fillOpacity: 0.30,
                         lineCap: 'round', lineJoin: 'round'
                     }
                 }).addTo(map);
@@ -411,7 +417,7 @@
                     interactive: false,
                     style: {
                         color: '#57dfff', weight: 3.5, opacity: 0.96,
-                        fillColor: '#173d78', fillOpacity: 0.08,
+                        fillColor: '#071d3c', fillOpacity: 0.30,
                         lineCap: 'round', lineJoin: 'round'
                     }
                 }).addTo(map);
@@ -442,7 +448,18 @@
         var markersGroup = L.markerClusterGroup({
             spiderfyOnMaxZoom: true,
             showCoverageOnHover: false,
-            zoomToBoundsOnClick: true
+            zoomToBoundsOnClick: true,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                const size = count >= 10 ? 48 : 42;
+                const tone = count >= 10 ? 'gold' : 'green';
+                return L.divIcon({
+                    html: `<div class="flat-count-marker ${tone}">${count}</div>`,
+                    className: 'flat-count-marker-wrap',
+                    iconSize: [size, size],
+                    iconAnchor: [size / 2, size / 2]
+                });
+            }
         });
         map.addLayer(markersGroup);
 
@@ -575,13 +592,17 @@
         // 지도 확대/축소 단계에 맞춰 필름 조각 마커의 실제 픽셀 크기를 조정합니다.
         // 원본 이미지의 가로세로 비율은 object-fit: contain으로 그대로 유지합니다.
         function getFilmMarkerIcon(shardImage, zoomLevel) {
-            const scale = Math.max(0.72, Math.min(1.65, Math.pow(1.13, zoomLevel - 14)));
-            const size = Math.round(32 * scale);
+            const scale = Math.max(0.78, Math.min(1.45, Math.pow(1.10, zoomLevel - 14)));
+            const width = Math.round(58 * scale);
+            const height = Math.round(48 * scale);
             return L.divIcon({
                 className: 'crystal-film-marker',
-                html: `<img src="${shardImage}" alt="크리스털 필름 파편" onerror="this.onerror=null;this.src=crystalFallbackData('film');this.classList.add('crystal-fallback')">`,
-                iconSize: [size, size],
-                iconAnchor: [size / 2, size / 2]
+                html: `<div class="film-marker-art" style="width:${width}px;height:${height}px">
+                    <img src="${shardImage}" alt="크리스털 필름 파편" onerror="this.onerror=null;this.src=crystalFallbackData('film');this.classList.add('crystal-fallback')">
+                    <span class="film-marker-pin"></span><span class="film-marker-ground"></span>
+                </div>`,
+                iconSize: [width, height],
+                iconAnchor: [width / 2, height]
             });
         }
 
