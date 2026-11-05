@@ -156,26 +156,40 @@
             filter: drop-shadow(0 0 2px rgba(93, 222, 255, .9));
         }
 
-
-        /* 도로 벡터에만 푸른 발광을 적용합니다. 위성 타일에는 색상 필터를 적용하지 않습니다. */
+    
+        /* BLUE CITY GRADE: 위성사진의 디테일은 유지하면서 도시 전체를 푸른 톤으로 */
+        #map {
+            position: relative;
+            background: #03172b !important;
+        }
+        #map .leaflet-tile-pane img {
+            filter: grayscale(.28) sepia(.30) hue-rotate(158deg)
+                    saturate(1.95) brightness(.72) contrast(1.22) !important;
+        }
+        #map::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 450;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse at 50% 45%, rgba(0, 132, 255, .12), transparent 72%),
+                linear-gradient(135deg, rgba(0, 54, 120, .24), rgba(0, 164, 220, .10) 52%, rgba(0, 25, 70, .26));
+            mix-blend-mode: screen;
+        }
+        /* 도로 선은 위성사진보다 선명하게 남겨 발광 효과를 강조 */
         #map .leaflet-roadGlowPane path {
             stroke: #168cff !important;
-            stroke-width: 9px !important;
-            stroke-opacity: .32 !important;
+            stroke-width: 8px !important;
+            stroke-opacity: .34 !important;
             filter: drop-shadow(0 0 4px rgba(20,145,255,1))
                     drop-shadow(0 0 10px rgba(20,105,255,.85));
         }
         #map .leaflet-roadCorePane path {
             stroke: #8ceaff !important;
             stroke-width: 2px !important;
-            stroke-opacity: .96 !important;
+            stroke-opacity: .98 !important;
             filter: drop-shadow(0 0 3px rgba(80,220,255,1));
-        }
-        .crystal-film-marker, .crystal-capsule-marker {
-            background: transparent !important; border: 0 !important;
-        }
-        .crystal-film-marker img, .crystal-capsule-marker img {
-            display:block; object-fit:contain; max-width:none !important; max-height:none !important;
         }
 
     </style>
@@ -531,82 +545,88 @@
         var roadRequestTimer = null;
         var roadRequestController = null;
         var lastRoadBoundsKey = '';
-        var roadLoadVersion = 0;
 
         function loadGlowingRoads() {
-            if (map.getZoom() < 13) {
+            if (map.getZoom() < 14) {
                 roadGlowLayer.clearLayers();
                 roadCoreLayer.clearLayers();
                 return;
             }
 
-            var bounds = map.getBounds().pad(0.12);
+            var bounds = map.getBounds().pad(0.08);
             var boundsKey = [
-                bounds.getSouth().toFixed(4), bounds.getWest().toFixed(4),
-                bounds.getNorth().toFixed(4), bounds.getEast().toFixed(4)
+                bounds.getSouth().toFixed(4),
+                bounds.getWest().toFixed(4),
+                bounds.getNorth().toFixed(4),
+                bounds.getEast().toFixed(4),
+                map.getZoom()
             ].join(',');
             if (boundsKey === lastRoadBoundsKey) return;
             lastRoadBoundsKey = boundsKey;
 
             if (roadRequestController) roadRequestController.abort();
             roadRequestController = new AbortController();
-            var thisVersion = ++roadLoadVersion;
 
-            var query = '[out:json][timeout:25];(' +
-                'way["highway"~"motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|pedestrian|footway|path"](' +
-                bounds.getSouth() + ',' + bounds.getWest() + ',' +
-                bounds.getNorth() + ',' + bounds.getEast() + '););out geom;';
+            var south = bounds.getSouth();
+            var west = bounds.getWest();
+            var north = bounds.getNorth();
+            var east = bounds.getEast();
+
+            var query = '[out:json][timeout:20];(' +
+                'way["highway"~"motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street"](' +
+                south + ',' + west + ',' + north + ',' + east + '););out geom;';
             var endpoints = [
-                'https://overpass-api.de/api/interpreter?data=',
-                'https://overpass.kumi.systems/api/interpreter?data=',
-                'https://overpass.nchc.org.tw/api/interpreter?data='
+                'https://overpass-api.de/api/interpreter',
+                'https://overpass.kumi.systems/api/interpreter'
             ];
 
             function requestEndpoint(index) {
                 if (index >= endpoints.length) {
-                    throw new Error('도로 데이터 서버에 연결할 수 없습니다.');
+                    lastRoadBoundsKey = '';
+                    return Promise.reject(new Error('도로 데이터를 불러오지 못했습니다.'));
                 }
-                return fetch(endpoints[index] + encodeURIComponent(query), {
-                    method: 'GET',
-                    signal: roadRequestController.signal,
-                    headers: { 'Accept': 'application/json' }
+                return fetch(endpoints[index], {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                    body: 'data=' + encodeURIComponent(query),
+                    signal: roadRequestController.signal
                 }).then(function (response) {
-                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    if (!response.ok) throw new Error('도로 데이터 서버 응답 오류');
                     return response.json();
                 }).catch(function (error) {
                     if (error.name === 'AbortError') throw error;
-                    if (index + 1 >= endpoints.length) throw error;
                     return requestEndpoint(index + 1);
                 });
             }
 
             requestEndpoint(0).then(function (data) {
-                if (thisVersion !== roadLoadVersion) return;
-                var features = (data.elements || []).filter(function (way) {
-                    return way.type === 'way' && way.geometry && way.geometry.length > 1;
-                }).map(function (way) {
-                    return {
-                        type: 'Feature',
-                        properties: { highway: (way.tags && way.tags.highway) || '' },
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: way.geometry.map(function (point) {
-                                return [point.lon, point.lat];
-                            })
-                        }
-                    };
-                });
+                if (!data || !Array.isArray(data.elements)) throw new Error('도로 데이터 형식 오류');
+
+                var features = data.elements
+                    .filter(function (way) {
+                        return way.type === 'way' && Array.isArray(way.geometry) && way.geometry.length > 1;
+                    })
+                    .map(function (way) {
+                        return {
+                            type: 'Feature',
+                            properties: { highway: way.tags && way.tags.highway ? way.tags.highway : '' },
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: way.geometry.map(function (point) {
+                                    return [point.lon, point.lat];
+                                })
+                            }
+                        };
+                    });
 
                 var collection = { type: 'FeatureCollection', features: features };
                 roadGlowLayer.clearLayers();
                 roadCoreLayer.clearLayers();
-                if (features.length) {
-                    roadGlowLayer.addData(collection);
-                    roadCoreLayer.addData(collection);
-                }
+                roadGlowLayer.addData(collection);
+                roadCoreLayer.addData(collection);
             }).catch(function (error) {
                 if (error.name !== 'AbortError') {
-                    console.warn('도로 발광 레이어를 불러오지 못했습니다:', error);
+                    console.warn('도로 발광 레이어:', error.message);
                     lastRoadBoundsKey = '';
                 }
             });
@@ -614,11 +634,12 @@
 
         function scheduleGlowingRoads() {
             clearTimeout(roadRequestTimer);
-            roadRequestTimer = setTimeout(loadGlowingRoads, 900);
+            roadRequestTimer = setTimeout(loadGlowingRoads, 650);
         }
 
-        map.whenReady(scheduleGlowingRoads);
+        map.whenReady(loadGlowingRoads);
         map.on('moveend zoomend', scheduleGlowingRoads);
+
 
         // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
         var markersGroup = L.markerClusterGroup({
@@ -757,28 +778,26 @@
         // 지도 확대/축소 단계에 맞춰 필름 조각 마커의 실제 픽셀 크기를 조정합니다.
         // 원본 이미지의 가로세로 비율은 object-fit: contain으로 그대로 유지합니다.
         function getFilmMarkerIcon(shardImage, zoomLevel) {
-            // 줌 12~18에서 20~66px로 확실히 변화합니다.
-            const z = Math.max(12, Math.min(18, Number(zoomLevel) || 14));
-            const size = Math.round(20 + (z - 12) * 7.7);
+            const scale = Math.max(0.72, Math.min(1.65, Math.pow(1.13, zoomLevel - 14)));
+            const size = Math.round(30 * scale);
             return L.divIcon({
                 className: 'crystal-film-marker',
-                html: `<img src="${shardImage}" alt="푸른 크리스털 필름 파편" style="width:${size}px;height:${size}px;max-width:none;max-height:none;object-fit:contain;display:block;">`,
+                html: `<img src="${shardImage}" alt="푸른 크리스털 필름 파편">`,
                 iconSize: [size, size],
                 iconAnchor: [size / 2, size / 2]
             });
         }
 
         function getCapsuleMarkerIcon(capsuleImage, collected, zoomLevel) {
-            // 줌 12~18에서 캡슐 높이가 48~82px로 부드럽게 변화합니다.
-            const z = Math.max(12, Math.min(18, Number(zoomLevel) || 14));
-            const height = Math.round(48 + (z - 12) * 5.7);
-            const width = Math.round(height * 0.71);
+            const scale = Math.max(0.75, Math.min(1.5, Math.pow(1.10, zoomLevel - 14)));
+            const width = Math.round(44 * scale);
+            const height = Math.round(62 * scale);
             return L.divIcon({
                 className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
-                html: `<img src="${capsuleImage}" alt="크리스털 타임캡슐" style="width:${width}px;height:${height}px;max-width:none;max-height:none;object-fit:contain;display:block;">`,
+                html: `<img src="${capsuleImage}" alt="크리스털 타임캡슐">`,
                 iconSize: [width, height],
-                iconAnchor: [width / 2, height - 4],
-                popupAnchor: [0, -height + 4]
+                iconAnchor: [width / 2, height - 5],
+                popupAnchor: [0, -height + 5]
             });
         }
 
@@ -796,7 +815,7 @@
             });
         }
 
-        map.on('zoomend', function () { updateFilmMarkerSizes(); scheduleGlowingRoads(); });
+        map.on('zoomend', updateFilmMarkerSizes);
 
         function renderAllMarkers() {
             markersGroup.clearLayers();
