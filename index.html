@@ -187,6 +187,13 @@
               linear-gradient(145deg,rgba(118,190,160,.045),rgba(120,150,220,.045));
             mix-blend-mode:soft-light;
         }
+
+        /* Missing local PNG assets use a coherent inline crystal fallback. */
+        .crystal-fallback {
+            width:100%; height:100%; display:block; object-fit:contain;
+            filter:drop-shadow(0 0 8px rgba(75,190,255,.85));
+        }
+
         @media(max-width:650px){
             .top-panel { background:linear-gradient(115deg,rgba(9,28,55,.94),rgba(42,57,98,.90)); }
         }
@@ -228,7 +235,7 @@
         <div id="film-assembly-stage">
             <div id="assembly-fragments"></div>
             <div id="assembly-flash"></div>
-            <img id="completed-film-reveal" src="assets/film/completed_crystal_film.png" alt="완성된 크리스털 필름">
+            <img id="completed-film-reveal" src="assets/film/completed_crystal_film.png" alt="완성된 크리스털 필름" onerror="this.onerror=null;this.src=crystalFallbackData('film');this.classList.add('crystal-fallback')">
         </div>
         <div id="assembly-caption">흩어진 기억이 하나의 필름으로 이어집니다</div>
     </div>
@@ -371,6 +378,67 @@
         });
 
         // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
+
+        // Gwangmyeong city boundary from a public GeoJSON administrative-boundary dataset.
+        // If the external file is unavailable, the game remains usable without this overlay.
+        const GWANGMYEONG_BOUNDARY_URL =
+            'https://raw.githubusercontent.com/KnellBalm/kr-admin-geojson/main/sig.geojson';
+
+        fetch(GWANGMYEONG_BOUNDARY_URL)
+            .then(response => {
+                if (!response.ok) throw new Error('Boundary GeoJSON request failed: ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                const features = (data.features || []).filter(feature => {
+                    const p = feature.properties || {};
+                    return String(p.SIG_CD || '') === '41210' ||
+                           String(p.FULL_NM || '').includes('광명시');
+                });
+                if (!features.length) throw new Error('Gwangmyeong feature not found in GeoJSON.');
+                const boundaryData = { type: 'FeatureCollection', features };
+
+                L.geoJSON(boundaryData, {
+                    interactive: false,
+                    style: {
+                        color: '#42dfff', weight: 12, opacity: 0.22,
+                        fillColor: '#123d78', fillOpacity: 0.05,
+                        lineCap: 'round', lineJoin: 'round'
+                    }
+                }).addTo(map);
+
+                L.geoJSON(boundaryData, {
+                    interactive: false,
+                    style: {
+                        color: '#57dfff', weight: 3.5, opacity: 0.96,
+                        fillColor: '#173d78', fillOpacity: 0.08,
+                        lineCap: 'round', lineJoin: 'round'
+                    }
+                }).addTo(map);
+            })
+            .catch(error => console.warn('광명시 경계 레이어 표시 실패:', error));
+
+        // Inline SVG fallback keeps missing crystal PNGs from appearing as broken-image icons.
+        function crystalFallbackData(kind = 'film') {
+            const capsule = kind === 'capsule';
+            const svg = capsule
+                ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 110">
+                    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                    <stop stop-color="#e9fbff"/><stop offset=".35" stop-color="#57cfff"/>
+                    <stop offset=".7" stop-color="#7868dc"/><stop offset="1" stop-color="#f7d7ff"/></linearGradient></defs>
+                    <path d="M40 4 L68 30 L61 86 L40 106 L19 86 L12 30 Z" fill="url(#g)" stroke="#e9fcff" stroke-width="3"/>
+                    <path d="M40 4 L40 106 M12 30 L68 30 M19 86 L61 86" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width="2"/>
+                    </svg>`
+                : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 70">
+                    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                    <stop stop-color="#55e6ff"/><stop offset=".38" stop-color="#4775ef"/>
+                    <stop offset=".72" stop-color="#c18bff"/><stop offset="1" stop-color="#fff0ff"/></linearGradient></defs>
+                    <path d="M4 45 L23 15 L42 28 L65 5 L96 24 L77 57 L53 43 L29 65 Z" fill="url(#g)" stroke="#e9fcff" stroke-width="2"/>
+                    <path d="M23 15 L29 65 M42 28 L53 43 L65 5 M77 57 L96 24" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="2"/>
+                    </svg>`;
+            return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+        }
+
         var markersGroup = L.markerClusterGroup({
             spiderfyOnMaxZoom: true,
             showCoverageOnHover: false,
@@ -511,7 +579,7 @@
             const size = Math.round(32 * scale);
             return L.divIcon({
                 className: 'crystal-film-marker',
-                html: `<img src="${shardImage}" alt="푸른 크리스털 필름 파편">`,
+                html: `<img src="${shardImage}" alt="크리스털 필름 파편" onerror="this.onerror=null;this.src=crystalFallbackData('film');this.classList.add('crystal-fallback')">`,
                 iconSize: [size, size],
                 iconAnchor: [size / 2, size / 2]
             });
@@ -549,7 +617,7 @@
                 }.png`;
                 let crystalIcon = L.divIcon({
                     className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
-                    html: `<img src="${capsuleImage}" alt="크리스털 타임캡슐">`,
+                    html: `<img src="${capsuleImage}" alt="크리스털 타임캡슐" onerror="this.onerror=null;this.src=crystalFallbackData('capsule');this.classList.add('crystal-fallback')">`,
                     iconSize: [48, 68],
                     iconAnchor: [24, 62],
                     popupAnchor: [0, -58]
@@ -760,6 +828,7 @@
                 const shard = document.createElement('img');
                 shard.className = 'assembly-fragment';
                 shard.src = `assets/film/film_fragment_${String(n).padStart(2, '0')}.png`;
+                shard.onerror = function() { this.onerror = null; this.src = crystalFallbackData('film'); this.classList.add('crystal-fallback'); };
                 shard.style.setProperty('--sx', `${8 + Math.random() * 78}%`);
                 shard.style.setProperty('--sy', `${8 + Math.random() * 68}%`);
                 shard.style.setProperty('--delay', `${Math.random() * 0.35}s`);
