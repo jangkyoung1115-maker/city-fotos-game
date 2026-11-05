@@ -3,25 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타임슬립 탐험대 - 마커 클러스터링 버전</title>
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+    <title>광명시 시간캡슐 - D+F+E 디자인 1차</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
+    <!-- Leaflet MarkerCluster CSS 추가 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     
     <!-- Firebase SDK 추가 -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
     <style>
-        html,body {margin:0; width:100%; height:100%; overflow:hidden;}
-        #map {position:absolute; inset:0; width:100%; height:100vh; background:#dce7ed;}
-        .maplibregl-ctrl-group {background:rgba(8,30,50,.9)!important;border:1px solid #8edfff!important}
-        .maplibregl-ctrl button {filter:invert(1)}
-        .maplibregl-popup-content {color:#eaf8ff;background:#102b43;border:1px solid #6abfe8;border-radius:10px;}
-        .maplibregl-popup-tip {border-top-color:#102b43!important;border-bottom-color:#102b43!important}
-        .film-cluster-badge {width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#f1fbff;font-weight:800;font-size:14px;background:radial-gradient(circle at 35% 28%,#b8efff,#398bd0 40%,#123e72 82%);border:1px solid #d3f7ff;box-shadow:0 0 0 5px #62cfff35,0 0 18px #39baffaa;text-shadow:0 1px 4px #002;cursor:pointer;}
-        .crystal-film-marker img,.crystal-capsule-marker img {display:block;object-fit:contain;filter:drop-shadow(0 0 7px #48baff);}
-        .maplibregl-marker {z-index:2;}
-
         body { margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', sans-serif; background: #f4f4f9; }
         #map { width: 100%; height: 100vh; }
         
@@ -102,18 +95,29 @@
         .list-item img { width: 35px; height: 35px; border-radius: 4px; object-fit: cover; }
 
         /* 시간의 층위에 따른 크리스털 타임캡슐 마커 */
-        .crystal-capsule-marker { background:transparent!important; border:0!important; pointer-events:auto; }
-        .capsule-ground-pin { position:relative; display:block; width:var(--cap-pin-w); height:var(--cap-pin-h); overflow:visible; }
-        .capsule-ground-pin .capsule-pin-ring { position:absolute; left:50%; bottom:1px; width:var(--cap-ring-w); height:var(--cap-ring-h); transform:translateX(-50%); border:1px solid rgba(130,225,255,.96); border-radius:50%; background:radial-gradient(ellipse,rgba(85,190,255,.30),rgba(20,85,165,.10) 58%,transparent 74%); box-shadow:0 0 7px rgba(65,190,255,.78),inset 0 0 5px rgba(160,235,255,.48); }
-        .capsule-ground-pin .capsule-pin-core { position:absolute; left:50%; bottom:calc(1px + var(--cap-ring-h)*.34); width:4px; height:4px; transform:translateX(-50%); border-radius:50%; background:#e5fbff; box-shadow:0 0 7px 2px rgba(75,190,255,.85); }
-        .capsule-ground-pin img { position:absolute; left:50%; bottom:calc(var(--cap-ring-h)*.40); width:var(--cap-img-w); height:var(--cap-img-h); transform:translateX(-50%); transform-origin:50% 90%; object-fit:contain; display:block; filter:drop-shadow(0 2px 4px rgba(8,30,60,.42)) drop-shadow(0 0 6px rgba(70,180,255,.52)); }
-        .crystal-capsule-marker.is-collected .capsule-ground-pin img { filter:drop-shadow(0 0 9px rgba(255,220,120,.92)) saturate(1.18); }
-        /* 필름은 얇은 막처럼 지면에 닿고, 바닥 원형 핀으로 위치를 표시합니다. */
-        .crystal-film-marker { background:transparent!important; border:0!important; pointer-events:auto; }
-        .film-ground-pin { position:relative; display:block; width:var(--pin-w); height:var(--pin-h); overflow:visible; }
-        .film-ground-pin .film-pin-ring { position:absolute; left:50%; bottom:1px; width:var(--ring-w); height:var(--ring-h); transform:translateX(-50%); border:1px solid rgba(111,220,255,.95); border-radius:50%; background:radial-gradient(ellipse,rgba(84,190,255,.30),rgba(22,95,180,.09) 55%,transparent 72%); box-shadow:0 0 5px rgba(56,190,255,.68),inset 0 0 4px rgba(130,225,255,.42); }
-        .film-ground-pin .film-pin-core { position:absolute; left:50%; bottom:calc(1px + var(--ring-h)*.34); width:3px; height:3px; transform:translateX(-50%); border-radius:50%; background:#d8f8ff; box-shadow:0 0 5px 2px rgba(75,190,255,.75); }
-        .film-ground-pin img { position:absolute; left:50%; bottom:calc(var(--ring-h)*.40); width:var(--shard-size); height:var(--shard-size); transform:translateX(-50%) rotate(var(--shard-rotation,0deg)); transform-origin:50% 90%; object-fit:contain; display:block; filter:drop-shadow(0 1px 2px rgba(10,35,75,.82)) drop-shadow(0 0 3px rgba(70,180,255,.65)); }
+        .crystal-capsule-marker {
+            background: transparent !important;
+            border: 0 !important;
+        }
+        .crystal-capsule-marker img {
+            width: 48px;
+            height: 68px;
+            object-fit: contain;
+            display: block;
+            filter: drop-shadow(0 4px 7px rgba(16, 55, 110, 0.28));
+            transform-origin: 50% 85%;
+        }
+        .crystal-capsule-marker.is-collected img {
+            filter: drop-shadow(0 0 8px rgba(255, 220, 120, 0.95)) saturate(1.18);
+        }
+
+        .crystal-film-marker { background: transparent !important; border: 0 !important; }
+        .crystal-film-marker img {
+            width: 100%; height: 100%; object-fit: contain; display: block;
+            filter: drop-shadow(0 2px 5px rgba(20,80,170,.65));
+            animation: shard-float 2.8s ease-in-out infinite;
+        }
+        @keyframes shard-float { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-4px) rotate(4deg); } }
         #film-assembly-overlay {
             display:none; position:fixed; inset:0; z-index:12000;
             background:radial-gradient(ellipse at center, rgba(34,67,120,.92), rgba(5,10,24,.98));
@@ -138,151 +142,58 @@
             animation:completed-film-appear 1.25s ease-out 1.75s forwards; }
         @keyframes completed-film-appear { 0% {opacity:0; transform:translate(-50%,-50%) scale(.55) rotate(-8deg)} 65% {opacity:1; transform:translate(-50%,-50%) scale(1.08) rotate(2deg)} 100% {opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0)} }
         #assembly-caption { margin-top:4px; font-size:15px; letter-spacing:.08em; text-shadow:0 0 12px #65cfff; }
-    
-        .crystal-film-marker img, .crystal-capsule-marker img {
-            width:100%; height:100%; object-fit:contain; display:block;
-        }
-        /* 마커 공통 규칙보다 개별 지면 오브젝트의 지정 크기를 우선합니다. */
-        .film-ground-pin img { width:var(--shard-size)!important; height:var(--shard-size)!important; }
-        .capsule-ground-pin img { width:var(--cap-img-w)!important; height:var(--cap-img-h)!important; }
-    
-        /* OSM 도로 벡터의 푸른 발광: 바탕 위성사진의 색과 선명도는 변경하지 않습니다. */
-        #map .leaflet-roadGlowPane path {
-            filter: drop-shadow(0 0 3px rgba(28, 145, 255, .95))
-                    drop-shadow(0 0 7px rgba(25, 105, 255, .58));
-        }
-        #map .leaflet-roadCorePane path {
-            filter: drop-shadow(0 0 2px rgba(93, 222, 255, .9));
-        }
 
-    </style>
-
-    <style id="crystal-interface-theme">
-        :root {
-            --night:#071523; --glass:rgba(7,25,43,.82); --line:rgba(167,218,255,.48);
-            --ice:#bdeaff; --cyan:#42cfff; --violet:#9c8bff;
+        /* D+F+E 디자인 1차 적용: 기존 Leaflet/Firebase 기능은 유지 */
+        body { background:#10243a; }
+        #map { background:#dce8d7; }
+        /* 실제 지도 타일의 색을 부드럽고 풍부하게 보정합니다.
+           이 단계는 회화적 색감 보정이며, 건물의 실제 3D 형상을 새로 만들지는 않습니다. */
+        #map .leaflet-tile-pane {
+            filter: saturate(1.22) contrast(1.06) brightness(1.025) sepia(.075);
         }
-        html, body { background:var(--night); color:#eef8ff; }
-        #map { background:#0b1c2b; }
-        .leaflet-container { background:transparent; }
-        .leaflet-tile { filter:saturate(.78) brightness(.72) contrast(1.08); }
-        .brand-mark {
-            position:fixed; z-index:1100; top:18px; left:22px; display:flex; align-items:center; gap:12px;
-            color:#f3fbff; text-shadow:0 2px 12px #00101e; pointer-events:none;
-        }
-        .brand-symbol { width:42px; height:42px; display:grid; place-items:center; border:1px solid #b9e8ff;
-            border-radius:13px 4px 13px 4px; color:#d9f5ff; font-size:35px; line-height:1;
-            background:linear-gradient(145deg,rgba(93,190,255,.32),rgba(16,40,68,.7)); box-shadow:0 0 20px #3ebcff55; }
-        .brand-mark strong { display:block; font-size:20px; letter-spacing:-.04em; }
-        .brand-mark span { display:block; margin-top:3px; font-size:10px; color:#b7d6e9; letter-spacing:.04em; }
+        #map .leaflet-overlay-pane { filter: saturate(1.08); }
         .top-panel {
-            position:fixed; top:16px; left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100% - 390px);
-            min-height:54px; box-sizing:border-box; padding:9px 15px; gap:13px; flex-wrap:wrap; justify-content:center;
-            border:1px solid var(--line); border-radius:18px; color:#edfaff; font-size:12px;
-            background:linear-gradient(135deg,rgba(7,25,43,.92),rgba(22,53,81,.84));
-            box-shadow:0 10px 32px #00101e88,inset 0 1px 0 #ffffff22; backdrop-filter:blur(14px);
+            background:linear-gradient(115deg,rgba(9,28,55,.90),rgba(34,57,91,.82),rgba(81,63,122,.78));
+            color:#f2f7ff; border:1px solid rgba(137,220,255,.42);
+            box-shadow:0 8px 30px rgba(4,16,39,.34), inset 0 1px rgba(255,255,255,.22);
+            backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
         }
-        .top-panel > span { white-space:nowrap; }
-        .fragment-badge,.completed-badge { color:#8fe6ff; font-size:17px; font-weight:800; }
-        .step-badge { color:#b4f2d0; }
-        .action-btn { border:1px solid #7fcfff88; border-radius:11px; padding:8px 11px; color:#eaf8ff;
-            background:linear-gradient(145deg,#17446b,#10283f); box-shadow:inset 0 1px #ffffff22; }
-        .action-btn:hover { background:#21608a; }
-        .admin-btn { background:#513e83; }.list-btn {background:#315a7b;}.bulk-btn {background:#126a7c;}
+        .action-btn { background:linear-gradient(135deg,#347cb4,#6759a8); border:1px solid rgba(190,235,255,.35); }
         .guide-banner {
-            bottom:18px; max-width:min(560px,88vw); padding:10px 18px; border:1px solid #9ddcff88;
-            border-radius:14px; background:rgba(5,20,35,.86); color:#dff6ff; font-size:12px;
-            box-shadow:0 8px 26px #00101e99; backdrop-filter:blur(12px);
+            background:linear-gradient(120deg,rgba(12,34,62,.88),rgba(45,60,105,.82));
+            border:1px solid rgba(105,220,255,.38); color:#f2f8ff;
+            box-shadow:0 0 22px rgba(62,190,255,.16),0 8px 24px rgba(0,0,0,.25);
+            backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
         }
-        .collection-panel,.capsule-key {
-            position:fixed; z-index:1050; color:#eaf8ff; border:1px solid var(--line);
-            background:linear-gradient(145deg,rgba(5,22,39,.91),rgba(16,43,67,.82));
-            box-shadow:0 12px 35px #00101e88,inset 0 1px 0 #ffffff18; backdrop-filter:blur(13px);
+        .crystal-capsule-marker img {
+            filter:drop-shadow(0 0 8px rgba(98,220,255,.55)) drop-shadow(0 5px 7px rgba(16,35,80,.35));
         }
-        .collection-panel { left:18px; bottom:86px; width:286px; padding:16px 17px 13px; border-radius:17px; }
-        .panel-kicker,.key-title { color:#83dfff; font-size:9px; letter-spacing:.18em; font-weight:800; }
-        .collection-panel h3 { margin:5px 0 12px; font-size:16px; color:#fff; }
-        .rule-line { display:flex; align-items:center; justify-content:space-between; gap:7px; padding:9px 0;
-            border-top:1px solid #b5ddf32b; font-size:11px; color:#d6eafa; }
-        .rule-line b { color:#fff; font-size:13px; }
-        .rule-line i { color:#72dfff; font-style:normal; font-size:19px; }
-        .rule-icon { color:#75dcff; font-size:19px; }
-        .collection-panel p { margin:8px 0 0; color:#a8c9dc; font-size:10px; line-height:1.5; }
+        .crystal-film-marker img {
+            filter:drop-shadow(0 0 7px rgba(82,220,255,.95)) drop-shadow(0 0 15px rgba(164,95,255,.55));
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius:14px; border:1px solid rgba(107,206,255,.45);
+            box-shadow:0 8px 28px rgba(18,38,76,.24);
+        }
+        .leaflet-control-zoom a {
+            color:#315b83 !important; background:rgba(247,251,255,.94) !important;
+        }
+        /* 계절감은 지도 위에 얹는 미세한 색감으로만 표현합니다. 실제 위성/건물 데이터 변경은 아닙니다. */
+        #map:after {
+            content:""; position:absolute; inset:0; pointer-events:none; z-index:350;
+            background:
+              radial-gradient(ellipse at 12% 18%,rgba(255,183,213,.10),transparent 34%),
+              radial-gradient(ellipse at 86% 78%,rgba(255,190,104,.08),transparent 38%),
+              linear-gradient(145deg,rgba(118,190,160,.045),rgba(120,150,220,.045));
+            mix-blend-mode:soft-light;
+        }
+        @media(max-width:650px){
+            .top-panel { background:linear-gradient(115deg,rgba(9,28,55,.94),rgba(42,57,98,.90)); }
+        }
 
-        .collection-panel { position:fixed; }
-        .collection-close {
-            position:absolute; top:8px; right:9px; width:27px; height:27px; border-radius:50%;
-            border:1px solid #a9ddf688; color:#eaf8ff; background:rgba(4,18,32,.72);
-            font-size:20px; line-height:20px; cursor:pointer;
-        }
-        .collection-close:hover { background:#27618a; }
-        .collection-reopen {
-            display:none; position:fixed; z-index:1051; left:18px; bottom:86px;
-            padding:10px 14px; border:1px solid #9ddcff88; border-radius:12px;
-            color:#eaf8ff; background:rgba(5,20,35,.9); cursor:pointer;
-            box-shadow:0 8px 26px #00101e99; backdrop-filter:blur(12px);
-        }
-        @media (max-width:520px) {
-            .collection-reopen { left:10px; bottom:66px; }
-        }
-        .capsule-key { right:18px; bottom:86px; display:flex; align-items:center; gap:12px; padding:11px 14px;
-            border-radius:14px; font-size:10px; color:#d4eafa; }
-        .capsule-key > div:not(.key-title) { display:flex; align-items:center; gap:5px; white-space:nowrap; }
-        .key-gem { display:inline-block; width:9px; height:19px; border:1px solid #d5f5ff;
-            transform:skewY(-13deg); box-shadow:0 0 9px #69cfff; }
-        .gem-modern {background:linear-gradient(#fff,#8edcff,#fff);}
-        .gem-mid {background:linear-gradient(120deg,#6ffcff,#a28bff,#fff);}
-        .gem-old {background:repeating-linear-gradient(0deg,#145b9a 0 4px,#9eeaff 5px 7px);}
-        .gem-ancient {background:linear-gradient(120deg,#806e5c,#173c69,#63cfff);}
-        .crystal-capsule-marker img { filter:drop-shadow(0 0 9px rgba(71,183,255,.65)); }
-        .crystal-capsule-marker.is-collected img { filter:drop-shadow(0 0 12px rgba(255,220,120,.95)) saturate(1.2); }
-        .crystal-film-marker img { filter:drop-shadow(0 0 9px rgba(54,190,255,.9)); }
-        .modal {
-            color:#eaf8ff; background:linear-gradient(145deg,#102a43,#071827); border:1px solid #8edbff88;
-            border-radius:18px; box-shadow:0 20px 65px #000b,inset 0 1px 0 #ffffff22; backdrop-filter:blur(16px);
-        }
-        .modal h3 { color:#f3fbff; }
-        .modal p { color:#c0d8e9 !important; }
-        .form-input { color:#eaf8ff; background:#0b2033; border:1px solid #4c7895; }
-        .form-input::placeholder { color:#88a9bd; }
-        .btn { background:linear-gradient(100deg,#087fbd,#4c8dff); box-shadow:0 5px 18px #168bdf44; }
-        .btn-secondary { color:#dcecf7; background:#29445b; }
-        .title-badge-box { color:#bfeaff; background:#17334b; border-color:#5f9fca; }
-        .photo-slot { background:#10283b; border-color:#54758b; }
-        .photo-slot.filled { background:#0c2235; border-color:#8ddcff; }
-        .list-item { border-color:#29465d; }
-        .leaflet-popup-content-wrapper,.leaflet-popup-tip { color:#eaf8ff; background:#102b43; }
-        .leaflet-popup-content { color:#eaf8ff; }
-        .leaflet-control-zoom a { color:#e8f8ff !important; background:#102b43 !important; border-color:#5a8aa9 !important; }
-        @media (max-width:900px) {
-            .brand-mark {top:12px;left:12px}.brand-mark strong{font-size:15px}.brand-mark span{font-size:9px}
-            .brand-symbol{width:34px;height:34px;font-size:28px}
-            .top-panel {top:62px;max-width:calc(100% - 20px);width:calc(100% - 20px);gap:7px;padding:8px;border-radius:14px}
-            .top-panel .action-btn {font-size:10px;padding:6px 8px}
-            .collection-panel {left:10px;bottom:76px;width:min(245px,62vw);padding:11px 12px}
-            .collection-panel h3{font-size:14px;margin-bottom:7px}
-            .rule-line{font-size:9px;padding:6px 0}.rule-line b{font-size:11px}
-            .capsule-key {right:10px;bottom:76px;display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:9px;font-size:9px}
-            .key-title {grid-column:1/-1}
-            .guide-banner {bottom:10px;font-size:10px}
-        }
-        @media (max-width:520px) {
-            .brand-mark {top:10px;left:10px}
-            .top-panel {top:56px}
-            .collection-panel {bottom:66px;width:calc(100% - 20px);left:10px;box-sizing:border-box}
-            .capsule-key {display:none}
-            .guide-banner {bottom:7px;max-width:94vw}
-        }
     </style>
-
 </head>
 <body>
-
-    <!-- 작품형 게임 타이틀 -->
-    <div class="brand-mark">
-        <div class="brand-symbol">⌁</div>
-        <div><strong>광명의 시간캡슐</strong><span>도시의 기억을 수집하는 필름 탐험</span></div>
-    </div>
 
     <!-- 상단 상태바 -->
     <div class="top-panel">
@@ -294,31 +205,6 @@
         <button id="admin-bulk-btn" class="action-btn bulk-btn" onclick="toggleBulkFilmMode()">필름 연속 배치: OFF</button>
         <button id="admin-list-btn" class="action-btn list-btn" onclick="openAdminListModal()">캡슐 목록</button>
     </div>
-
-    <!-- 수집 규칙 패널 -->
-    <section class="collection-panel" aria-label="수집 규칙">
-        <button class="collection-close" type="button" aria-label="수집 안내 닫기" onclick="closeCollectionGuide()">×</button>
-        <div class="panel-kicker">COLLECTION GUIDE</div>
-        <h3>기억을 모으는 방법</h3>
-        <div class="rule-line">
-            <span class="rule-icon">✦</span><span>필름 파편 <b>5개</b></span><i>→</i><span>완성 필름 <b>1개</b></span>
-        </div>
-        <div class="rule-line">
-            <span class="rule-icon">▤</span><span>완성 필름 <b>10개</b></span><i>→</i><span>타임캡슐 <b>1개</b></span>
-        </div>
-        <p>도시 곳곳에 흩어진 기억의 조각을 찾아보세요.</p>
-    </section>
-
-    <button id="collection-guide-reopen" class="collection-reopen" type="button" onclick="openCollectionGuide()" aria-label="수집 안내 다시 보기">수집 안내</button>
-
-    <!-- 캡슐 시대별 안내 -->
-    <section class="capsule-key" aria-label="타임캡슐 종류">
-        <div class="key-title">TIME CAPSULES</div>
-        <div><span class="key-gem gem-modern"></span><span>현대</span></div>
-        <div><span class="key-gem gem-mid"></span><span>중간 시대</span></div>
-        <div><span class="key-gem gem-old"></span><span>오래된 기억</span></div>
-        <div><span class="key-gem gem-ancient"></span><span>오래된 층위</span></div>
-    </section>
 
     <!-- 하단 가이드 배너 -->
     <div id="guide-banner" class="guide-banner">
@@ -426,7 +312,9 @@
         <button class="btn btn-secondary" onclick="closeModal('admin-list-modal')" style="margin-top: 10px; padding: 10px;">닫기</button>
     </div>
 
-    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet MarkerCluster JS 추가 -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     
     <script>
         const firebaseConfig = {
@@ -458,122 +346,29 @@
             initRealtimeData();
         });
 
-        // MapLibre 3D 위성지도: 위성사진을 바닥으로, 벡터 건물과 행정경계 효과를 위에 구성합니다.
-        const map3d = new maplibregl.Map({
-            container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty',
-            center: [126.8646, 37.4784], zoom: 14.2, pitch: 58, bearing: -20,
-            minZoom: 11, maxZoom: 17.8, maxPitch: 64, antialias: true
+        var map = L.map('map').setView([37.4784, 126.8646], 14);
+
+        // CARTO Voyager: 무료 발급받은 개인 API 키를 입력하면 타일을 불러옵니다.
+        const cartoKey = localStorage.getItem('gwangmyeong_carto_key') || '';
+        const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(cartoKey);
+        const baseTiles = L.tileLayer(tileUrl, {
+            subdomains: 'abcd',
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            crossOrigin: true
+        }).addTo(map);
+        if (!cartoKey) {
+            setTimeout(() => {
+                const key = prompt('지도 표시를 위해 CARTO 무료 API 키를 입력해 주세요.\n키 발급: https://www.carto.com/basemaps/apikey/index.html');
+                if (key && key.trim()) {
+                    localStorage.setItem('gwangmyeong_carto_key', key.trim());
+                    location.reload();
+                }
+            }, 500);
+        }
+        map.on('tileerror', function(e) {
+            console.warn('지도 타일을 불러오지 못했습니다. 네트워크 또는 타일 제공자 상태를 확인하세요.', e);
         });
-        map3d.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'top-right');
-        map3d.on('zoom', () => { if (map3d.getZoom() > 17.8) map3d.setZoom(17.8); });
-
-        // 기존 게임 로직이 사용하던 Leaflet형 API를 얇은 호환 계층으로 유지합니다.
-        const map = {
-            getZoom: () => map3d.getZoom(),
-            getCenter: () => { const c=map3d.getCenter(); return {lat:c.lat,lng:c.lng}; },
-            setView: (ll,z) => { map3d.flyTo({center:[ll[1],ll[0]],zoom:z,pitch:58,bearing:-20}); return map; },
-            on: (events, fn) => events.split(/\s+/).forEach(ev => {
-                if(ev==='click') map3d.on('click', e => fn({latlng:{lat:e.lngLat.lat,lng:e.lngLat.lng}}));
-                else if(ev==='zoomend') map3d.on('zoomend', fn);
-                else if(ev==='moveend') map3d.on('moveend', fn);
-            }),
-            addLayer: layer => layer.addTo(map),
-            removeLayer: layer => layer && layer.remove(),
-            whenReady: fn => map3d.loaded() ? fn() : map3d.once('load',fn)
-        };
-        const L = {
-            divIcon: options => ({options}),
-            marker: (latlng, options={}) => new GameMarker(latlng, options),
-            markerClusterGroup: () => new GameMarkerGroup()
-        };
-        class GameMarker {
-            constructor(latlng, options={}) { this.latlng=latlng; this.icon=options.icon||null; this.events={}; this.popup=null; this.marker=null; this.group=null; }
-            _element(){ const o=this.icon?.options||{}; const el=document.createElement('div'); el.className=o.className||'game-marker'; el.innerHTML=o.html||''; if(o.iconSize){el.style.width=o.iconSize[0]+'px';el.style.height=o.iconSize[1]+'px';} return el; }
-            _make(){ if(this.marker) this.marker.remove(); const o=this.icon?.options||{}; const el=this._element(); this.element=el; if(this._filmRotation!==undefined) el.querySelector('img')?.style.setProperty('--shard-rotation',this._filmRotation+'deg'); this.marker=new maplibregl.Marker({element:el,anchor:o.iconAnchor?'bottom':'center'}).setLngLat([this.latlng[1],this.latlng[0]]); if(this.popup)this.marker.setPopup(new maplibregl.Popup({offset:18}).setHTML(this.popup)); Object.entries(this.events).forEach(([name,fn])=>el.addEventListener(name,fn)); if(this.group){this.marker.addTo(map3d);} return this; }
-            addTo(){ if(!this.marker)this._make(); if(this.marker)this.marker.addTo(map3d); return this; }
-            setIcon(icon){this.icon=icon;this._make();return this;}
-            bindPopup(html){this.popup=html;if(this.marker)this.marker.setPopup(new maplibregl.Popup({offset:18}).setHTML(html));return this;}
-            on(name,fn){this.events[name]=fn;if(this.element)this.element.addEventListener(name,fn);return this;}
-            setLatLng(ll){this.latlng=ll;if(this.marker)this.marker.setLngLat([ll[1],ll[0]]);return this;}
-            remove(){if(this.marker)this.marker.remove();this.marker=null;return this;}
-        }
-        class GameMarkerGroup {
-            constructor(){this.items=[];this.rendered=[];map3d.on('moveend',()=>this.render());map3d.on('zoomend',()=>this.render());}
-            addTo(){this.render();return this;}
-            addLayer(m){m.group=this;this.items.push(m);this.render();return this;}
-            clearLayers(){this.items.forEach(m=>{m.remove();m.group=null;});this.items=[];this.rendered=[];}
-            render(){this.rendered.forEach(m=>m.remove());this.rendered=[];if(!this.items.length||!map3d.loaded())return;
-                const zoom=map3d.getZoom(), films=[],others=[];
-                this.items.forEach(m=>{const cls=m.icon?.options?.className||'';(cls.includes('crystal-film-marker')?films:others).push(m);});
-                others.forEach(m=>{m.group=this;m._make();this.rendered.push(m);});
-                const cell=zoom<13.6?112:zoom<14.6?92:zoom<15.5?74:zoom<16.2?54:0;
-                if(!cell){films.forEach(m=>{m.group=this;m._make();this.rendered.push(m);});return;}
-                const bins=new Map();films.forEach(m=>{const p=map3d.project([m.latlng[1],m.latlng[0]]);const k=Math.floor(p.x/cell)+':'+Math.floor(p.y/cell);if(!bins.has(k))bins.set(k,[]);bins.get(k).push(m);});
-                bins.forEach(items=>{if(items.length===1){const m=items[0];m.group=this;m._make();this.rendered.push(m);return;}
-                    const lng=items.reduce((a,m)=>a+m.latlng[1],0)/items.length,lat=items.reduce((a,m)=>a+m.latlng[0],0)/items.length;
-                    const el=document.createElement('div');el.className='film-cluster-badge';el.textContent=items.length;el.title='확대하면 필름 조각을 하나씩 볼 수 있습니다';
-                    const cluster=new maplibregl.Marker({element:el}).setLngLat([lng,lat]).addTo(map3d);el.addEventListener('click',()=>map3d.easeTo({center:[lng,lat],zoom:Math.min(17.8,zoom+1.6)}));
-                    this.rendered.push({remove:()=>cluster.remove()});
-                });
-            }
-        }
-
-        // 실제 위성사진을 바닥에 깔고 도로·명칭·반투명 3D 건물을 위에 겹칩니다.
-        map3d.on('load', () => {
-            const style = map3d.getStyle();
-            if (!map3d.getSource('satellite-imagery')) {
-                map3d.addSource('satellite-imagery', {
-                    type: 'raster',
-                    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-                    tileSize: 256,
-                    attribution: 'Imagery © Esri, Maxar, Earthstar Geographics'
-                });
-                // 첫 background가 아니라 첫 벡터 레이어 앞에 넣어 위성사진이 실제로 보이게 합니다.
-                const firstVectorLayer = (style.layers || []).find(layer => layer.type !== 'background');
-                const rasterLayer = {id:'satellite-base',type:'raster',source:'satellite-imagery',paint:{'raster-opacity':1,'raster-saturation':0.08,'raster-contrast':0.08,'raster-brightness-min':0.02,'raster-brightness-max':0.96}};
-                if (firstVectorLayer) map3d.addLayer(rasterLayer, firstVectorLayer.id);
-                else map3d.addLayer(rasterLayer);
-            }
-            // 위성사진을 가리는 불투명한 토지/공원 색면을 숨깁니다. 도로·라벨·3D 건물은 유지합니다.
-            (map3d.getStyle().layers || []).forEach(layer => {
-                try {
-                    if (layer.type === 'background' || layer.type === 'fill') {
-                        map3d.setLayoutProperty(layer.id, 'visibility', 'none');
-                    } else if (layer.type === 'fill-extrusion') {
-                        // 위성사진의 실제 지붕·숲·도로 디테일을 가리는 회색 3D 건물은 완전히 숨깁니다.
-                        map3d.setLayoutProperty(layer.id, 'visibility', 'none');
-                    }
-                } catch (e) {}
-            });
-            addGwangmyeongBoundary();
-            map3d.setMaxZoom(17.8);
-        });
-
-        function addGwangmyeongBoundary() {
-            const url = 'https://nominatim.openstreetmap.org/search?format=geojson&polygon_geojson=1&limit=1&q=' + encodeURIComponent('Gwangmyeong-si, Gyeonggi-do, South Korea');
-            fetch(url, {headers:{'Accept':'application/geo+json'}})
-                .then(r => { if (!r.ok) throw Error('경계 데이터 응답 오류'); return r.json(); })
-                .then(data => {
-                    const f = (data.features || []).find(x => x.geometry && (x.geometry.type === 'Polygon' || x.geometry.type === 'MultiPolygon'));
-                    if (!f) throw Error('광명시 경계 없음');
-                    map3d.addSource('gwangmyeong-boundary', {type:'geojson', data:f});
-                    const layers = map3d.getStyle().layers || [];
-                    const firstSymbol = layers.find(layer => layer.type === 'symbol');
-                    const firstBuilding = layers.find(layer => layer.type === 'fill-extrusion');
-                    const beforeFill = firstBuilding?.id || firstSymbol?.id;
-                    map3d.addLayer({id:'gwangmyeong-navy-area',type:'fill',source:'gwangmyeong-boundary',paint:{'fill-color':'#183f70','fill-opacity':0.25}}, beforeFill);
-
-                    // 별도 회색 3D 건물 레이어는 추가하지 않습니다. 위성사진의 실제 도시 표면을 유지합니다.
-                    const symbolId = (map3d.getStyle().layers || []).find(layer => layer.type === 'symbol')?.id;
-                    map3d.addLayer({id:'gwangmyeong-edge-glow',type:'line',source:'gwangmyeong-boundary',paint:{'line-color':'#55bfff','line-width':4,'line-opacity':0.28,'line-blur':2.5}}, symbolId);
-                    map3d.addLayer({id:'gwangmyeong-edge-core',type:'line',source:'gwangmyeong-boundary',paint:{'line-color':'#b4eaff','line-width':1.2,'line-opacity':0.88}}, symbolId);
-                    const b = new maplibregl.LngLatBounds();
-                    const walk = c => { if (typeof c[0] === 'number') b.extend(c); else c.forEach(walk); };
-                    walk(f.geometry.coordinates);
-                    map3d.fitBounds(b, {padding:55,maxZoom:14.2,duration:800});
-                })
-                .catch(e => console.warn('광명시 경계 표시 실패:', e));
-        }
 
         // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
         var markersGroup = L.markerClusterGroup({
@@ -712,32 +507,13 @@
         // 지도 확대/축소 단계에 맞춰 필름 조각 마커의 실제 픽셀 크기를 조정합니다.
         // 원본 이미지의 가로세로 비율은 object-fit: contain으로 그대로 유지합니다.
         function getFilmMarkerIcon(shardImage, zoomLevel) {
-            // 기존보다 약 1.5배 키우되 최대 확대에서도 22px로 제한합니다.
-            const t = Math.max(0, Math.min(1, (zoomLevel - 14.5) / 3.0));
-            const shard = Math.round(12 + t * 10);       // 12~22px
-            const ringW = Math.round(17 + t * 9);
-            const ringH = Math.round(5 + t * 2);
-            const width = ringW + 10;
-            const height = shard + ringH + 4;
+            const scale = Math.max(0.72, Math.min(1.65, Math.pow(1.13, zoomLevel - 14)));
+            const size = Math.round(32 * scale);
             return L.divIcon({
                 className: 'crystal-film-marker',
-                html: `<span class="film-ground-pin" style="--pin-w:${width}px;--pin-h:${height}px;--shard-size:${shard}px;--ring-w:${ringW}px;--ring-h:${ringH}px"><span class="film-pin-ring"></span><span class="film-pin-core"></span><img src="${shardImage}" alt=""></span>`,
-                iconSize: [width, height], iconAnchor: [width / 2, height]
-            });
-        }
-
-        function getCapsuleMarkerIcon(capsuleImage, collected, zoomLevel) {
-            const t = Math.max(0, Math.min(1, (zoomLevel - 13.5) / 3.5));
-            const imgW = Math.round(34 + t * 8);
-            const imgH = Math.round(48 + t * 10);
-            const ringW = Math.round(30 + t * 8);
-            const ringH = Math.round(8 + t * 2);
-            const width = ringW + 12;
-            const height = imgH + ringH + 4;
-            return L.divIcon({
-                className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
-                html: `<span class="capsule-ground-pin" style="--cap-pin-w:${width}px;--cap-pin-h:${height}px;--cap-img-w:${imgW}px;--cap-img-h:${imgH}px;--cap-ring-w:${ringW}px;--cap-ring-h:${ringH}px"><span class="capsule-pin-ring"></span><span class="capsule-pin-core"></span><img src="${capsuleImage}" alt=""></span>`,
-                iconSize: [width, height], iconAnchor: [width / 2, height], popupAnchor: [0, -height + 5]
+                html: `<img src="${shardImage}" alt="푸른 크리스털 필름 파편">`,
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2]
             });
         }
 
@@ -746,11 +522,6 @@
             Object.values(filmMarkers).forEach(marker => {
                 if (marker && marker._filmShardImage) {
                     marker.setIcon(getFilmMarkerIcon(marker._filmShardImage, zoomLevel));
-                }
-            });
-            Object.values(capsuleMarkers).forEach(entry => {
-                if (entry && entry.marker && entry.capsuleImage) {
-                    entry.marker.setIcon(getCapsuleMarkerIcon(entry.capsuleImage, entry.collected, zoomLevel));
                 }
             });
         }
@@ -776,27 +547,32 @@
                     capsuleType === 'old' ? '03_old' :
                     capsuleType === 'ancient' ? '04_ancient' : '01_modern'
                 }.png`;
-                let crystalIcon = getCapsuleMarkerIcon(capsuleImage, collected, map.getZoom());
+                let crystalIcon = L.divIcon({
+                    className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
+                    html: `<img src="${capsuleImage}" alt="크리스털 타임캡슐">`,
+                    iconSize: [48, 68],
+                    iconAnchor: [24, 62],
+                    popupAnchor: [0, -58]
+                });
 
                 let marker = L.marker([cap.lat, cap.lon], {icon: crystalIcon});
                 let yearLabel = cap.photoYear ? `<br>사진 시기: ${cap.photoYear}` : '';
                 marker.bindPopup(`<b>[${cap.region || '기타'}] ${cap.title}</b>${yearLabel}<br>${collected ? '수집 완료' : '미발견 타임캡슐'}`);
                 
-                capsuleMarkers[cap.id] = { marker: marker, data: cap, collected: collected, capsuleImage: capsuleImage };
+                capsuleMarkers[cap.id] = { marker: marker, data: cap, collected: collected };
                 markersGroup.addLayer(marker);
             });
 
             // 2. 필름 조각 렌더링
             cachedFilms.forEach(film => {
-                // 선택한 11종 디자인 중 하나를 필름 ID 기준으로 고정 배정합니다.
-                // 같은 필름은 새로고침해도 같은 이미지가 유지되고, 전체적으로는 다양한 형태가 섞입니다.
-                const shardDesigns = ['01','02','03','04','05','06','07','08'];
-                const shardHash = Array.from(String(film.id || `${film.lat},${film.lon}`)).reduce((a,ch)=>((a*31)+ch.charCodeAt(0))>>>0,7);
-                let shardImage = `assets/film/film_fragment_${shardDesigns[shardHash % shardDesigns.length]}.png`;
+                let filmIdText = String(film.id || 'film');
+                let filmHash = 0;
+                for (let i = 0; i < filmIdText.length; i++) filmHash = (filmHash + filmIdText.charCodeAt(i) * (i + 1)) % 997;
+                let shardNumber = (filmHash % 18) + 1;
+                let shardImage = `assets/film/film_fragment_${String(shardNumber).padStart(2, '0')}.png`;
                 let miniFilmIcon = getFilmMarkerIcon(shardImage, map.getZoom());
                 let marker = L.marker([film.lat, film.lon], {icon: miniFilmIcon});
                 marker._filmShardImage = shardImage;
-                marker._filmRotation = (shardHash % 61) - 30;
                 
                 if (isAdminMode) {
                     marker.bindPopup("<b>🛠️ [관리자] 필름 조각</b><br>클릭하면 이 필름이 삭제됩니다.");
@@ -979,12 +755,11 @@
             reveal.offsetHeight;
             reveal.style.animation = '';
             // 실제 조합 수량과 동일하게 파편 오브제 5개만 모입니다.
-            const assemblyDesigns = ['01','02','03','04','05','06','07','08'];
-            const chosen = Array.from({length:assemblyDesigns.length}, (_,i)=>i+1).sort(()=>Math.random()-.5).slice(0,5);
+            const chosen = Array.from({length:18}, (_,i)=>i+1).sort(()=>Math.random()-.5).slice(0,5);
             chosen.forEach((n, i) => {
                 const shard = document.createElement('img');
                 shard.className = 'assembly-fragment';
-                shard.src = `assets/film/film_fragment_${assemblyDesigns[n-1]}.png`; 
+                shard.src = `assets/film/film_fragment_${String(n).padStart(2, '0')}.png`;
                 shard.style.setProperty('--sx', `${8 + Math.random() * 78}%`);
                 shard.style.setProperty('--sy', `${8 + Math.random() * 68}%`);
                 shard.style.setProperty('--delay', `${Math.random() * 0.35}s`);
@@ -1331,21 +1106,6 @@
                 openAlbum();
             }
         }
-    
-        function closeCollectionGuide() {
-            const panel = document.querySelector('.collection-panel');
-            const reopen = document.getElementById('collection-guide-reopen');
-            if (panel) panel.style.display = 'none';
-            if (reopen) reopen.style.display = 'block';
-        }
-
-        function openCollectionGuide() {
-            const panel = document.querySelector('.collection-panel');
-            const reopen = document.getElementById('collection-guide-reopen');
-            if (panel) panel.style.display = 'block';
-            if (reopen) reopen.style.display = 'none';
-        }
-
-</script>
+    </script>
 </body>
 </html>
