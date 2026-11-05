@@ -143,40 +143,9 @@
         @keyframes completed-film-appear { 0% {opacity:0; transform:translate(-50%,-50%) scale(.55) rotate(-8deg)} 65% {opacity:1; transform:translate(-50%,-50%) scale(1.08) rotate(2deg)} 100% {opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0)} }
         #assembly-caption { margin-top:4px; font-size:15px; letter-spacing:.08em; text-shadow:0 0 12px #65cfff; }
     
-        /* Blue luminous cartographic treatment: keeps satellite detail visible */
-        #map { position:relative; background:#020b18 !important; }
-        #map .leaflet-tile {
-            filter: grayscale(.48) sepia(.24) hue-rotate(165deg) saturate(1.85)
-                    brightness(.67) contrast(1.22);
-        }
-        #map::after {
-            content:""; position:absolute; inset:0; z-index:450; pointer-events:none;
-            background:
-                radial-gradient(ellipse at 50% 48%, rgba(18,111,205,.10), transparent 68%),
-                linear-gradient(135deg, rgba(0,45,105,.28), rgba(0,145,220,.12) 48%, rgba(0,20,65,.34));
-            mix-blend-mode:screen;
-        }
-        #map .leaflet-control-container,
-        #map .leaflet-pane { position:absolute; }
-
-    
-        
-        /* Road-map overlay: blue luminous linework, blended over the real satellite image */
-        #map .leaflet-glowingRoadPane img {
-            filter: invert(1) sepia(1) saturate(5) hue-rotate(165deg) brightness(1.45) contrast(1.7);
-            mix-blend-mode: screen;
-            opacity: .82;
-        }
-        #map .leaflet-tile-pane img {
-            filter: grayscale(.42) sepia(.18) hue-rotate(165deg) saturate(1.55)
-                    brightness(.70) contrast(1.18);
-        }
-        .crystal-film-marker, .crystal-capsule-marker { transition:width .18s ease,height .18s ease; }
         .crystal-film-marker img, .crystal-capsule-marker img {
             width:100%; height:100%; object-fit:contain; display:block;
-            transition:filter .2s ease;
         }
-
     </style>
 
     <style id="crystal-interface-theme">
@@ -491,19 +460,6 @@
             attribution: 'Imagery © Esri, Maxar, Earthstar Geographics'
         }).addTo(map);
 
-        // 위성사진 위에 어두운 도로망을 별도 레이어로 겹쳐 푸른 윤곽을 강조합니다.
-        map.createPane('glowingRoadPane');
-        map.getPane('glowingRoadPane').style.zIndex = 360;
-        map.getPane('glowingRoadPane').style.pointerEvents = 'none';
-        var glowingRoadLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            pane: 'glowingRoadPane',
-            minZoom: 12,
-            maxZoom: 18,
-            maxNativeZoom: 18,
-            opacity: 0.72,
-            attribution: 'Street data © Esri and contributors'
-        }).addTo(map);
-
         // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
         var markersGroup = L.markerClusterGroup({
             spiderfyOnMaxZoom: true,
@@ -652,7 +608,7 @@
         }
 
         function getCapsuleMarkerIcon(capsuleImage, collected, zoomLevel) {
-            const scale = Math.max(0.72, Math.min(1.55, Math.pow(1.10, zoomLevel - 14)));
+            const scale = Math.max(0.75, Math.min(1.5, Math.pow(1.10, zoomLevel - 14)));
             const width = Math.round(44 * scale);
             const height = Math.round(62 * scale);
             return L.divIcon({
@@ -678,7 +634,7 @@
             });
         }
 
-        map.on('zoomend zoomlevelschange', updateFilmMarkerSizes);
+        map.on('zoomend', updateFilmMarkerSizes);
 
         function renderAllMarkers() {
             markersGroup.clearLayers();
