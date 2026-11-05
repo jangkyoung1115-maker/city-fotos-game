@@ -142,6 +142,23 @@
             animation:completed-film-appear 1.25s ease-out 1.75s forwards; }
         @keyframes completed-film-appear { 0% {opacity:0; transform:translate(-50%,-50%) scale(.55) rotate(-8deg)} 65% {opacity:1; transform:translate(-50%,-50%) scale(1.08) rotate(2deg)} 100% {opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0)} }
         #assembly-caption { margin-top:4px; font-size:15px; letter-spacing:.08em; text-shadow:0 0 12px #65cfff; }
+    
+        /* Blue luminous cartographic treatment: keeps satellite detail visible */
+        #map { position:relative; background:#020b18 !important; }
+        #map .leaflet-tile {
+            filter: grayscale(.48) sepia(.24) hue-rotate(165deg) saturate(1.85)
+                    brightness(.67) contrast(1.22);
+        }
+        #map::after {
+            content:""; position:absolute; inset:0; z-index:450; pointer-events:none;
+            background:
+                radial-gradient(ellipse at 50% 48%, rgba(18,111,205,.10), transparent 68%),
+                linear-gradient(135deg, rgba(0,45,105,.28), rgba(0,145,220,.12) 48%, rgba(0,20,65,.34));
+            mix-blend-mode:screen;
+        }
+        #map .leaflet-control-container,
+        #map .leaflet-pane { position:absolute; }
+
     </style>
 
     <style id="crystal-interface-theme">
@@ -195,6 +212,23 @@
         .rule-line i { color:#72dfff; font-style:normal; font-size:19px; }
         .rule-icon { color:#75dcff; font-size:19px; }
         .collection-panel p { margin:8px 0 0; color:#a8c9dc; font-size:10px; line-height:1.5; }
+
+        .collection-panel { position:fixed; }
+        .collection-close {
+            position:absolute; top:8px; right:9px; width:27px; height:27px; border-radius:50%;
+            border:1px solid #a9ddf688; color:#eaf8ff; background:rgba(4,18,32,.72);
+            font-size:20px; line-height:20px; cursor:pointer;
+        }
+        .collection-close:hover { background:#27618a; }
+        .collection-reopen {
+            display:none; position:fixed; z-index:1051; left:18px; bottom:86px;
+            padding:10px 14px; border:1px solid #9ddcff88; border-radius:12px;
+            color:#eaf8ff; background:rgba(5,20,35,.9); cursor:pointer;
+            box-shadow:0 8px 26px #00101e99; backdrop-filter:blur(12px);
+        }
+        @media (max-width:520px) {
+            .collection-reopen { left:10px; bottom:66px; }
+        }
         .capsule-key { right:18px; bottom:86px; display:flex; align-items:center; gap:12px; padding:11px 14px;
             border-radius:14px; font-size:10px; color:#d4eafa; }
         .capsule-key > div:not(.key-title) { display:flex; align-items:center; gap:5px; white-space:nowrap; }
@@ -267,6 +301,7 @@
 
     <!-- 수집 규칙 패널 -->
     <section class="collection-panel" aria-label="수집 규칙">
+        <button class="collection-close" type="button" aria-label="수집 안내 닫기" onclick="closeCollectionGuide()">×</button>
         <div class="panel-kicker">COLLECTION GUIDE</div>
         <h3>기억을 모으는 방법</h3>
         <div class="rule-line">
@@ -277,6 +312,8 @@
         </div>
         <p>도시 곳곳에 흩어진 기억의 조각을 찾아보세요.</p>
     </section>
+
+    <button id="collection-guide-reopen" class="collection-reopen" type="button" onclick="openCollectionGuide()" aria-label="수집 안내 다시 보기">수집 안내</button>
 
     <!-- 캡슐 시대별 안내 -->
     <section class="capsule-key" aria-label="타임캡슐 종류">
@@ -429,9 +466,9 @@
 
         var map = L.map('map').setView([37.4784, 126.8646], 14);
 
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 19,
-            attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics'
+            attribution: 'Imagery © Esri, Maxar, Earthstar Geographics'
         }).addTo(map);
 
         // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
@@ -1170,6 +1207,21 @@
                 openAlbum();
             }
         }
-    </script>
+    
+        function closeCollectionGuide() {
+            const panel = document.querySelector('.collection-panel');
+            const reopen = document.getElementById('collection-guide-reopen');
+            if (panel) panel.style.display = 'none';
+            if (reopen) reopen.style.display = 'block';
+        }
+
+        function openCollectionGuide() {
+            const panel = document.querySelector('.collection-panel');
+            const reopen = document.getElementById('collection-guide-reopen');
+            if (panel) panel.style.display = 'block';
+            if (reopen) reopen.style.display = 'none';
+        }
+
+</script>
 </body>
 </html>
