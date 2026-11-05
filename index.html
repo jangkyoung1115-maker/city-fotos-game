@@ -146,6 +146,16 @@
         .crystal-film-marker img, .crystal-capsule-marker img {
             width:100%; height:100%; object-fit:contain; display:block;
         }
+    
+        /* OSM 도로 벡터의 푸른 발광: 바탕 위성사진의 색과 선명도는 변경하지 않습니다. */
+        #map .leaflet-roadGlowPane path {
+            filter: drop-shadow(0 0 3px rgba(28, 145, 255, .95))
+                    drop-shadow(0 0 7px rgba(25, 105, 255, .58));
+        }
+        #map .leaflet-roadCorePane path {
+            filter: drop-shadow(0 0 2px rgba(93, 222, 255, .9));
+        }
+
     </style>
 
     <style id="crystal-interface-theme">
@@ -459,6 +469,141 @@
             maxNativeZoom: 18,
             attribution: 'Imagery © Esri, Maxar, Earthstar Geographics'
         }).addTo(map);
+
+
+        // 실제 도로 선형을 OpenStreetMap 데이터에서 가져와 위성사진 위에 발광 벡터로 표시합니다.
+        // 위성사진 타일은 건드리지 않고, 도로 선만 투명한 SVG 레이어로 추가합니다.
+        map.createPane('roadGlowPane');
+        map.getPane('roadGlowPane').style.zIndex = 430;
+        map.getPane('roadGlowPane').style.pointerEvents = 'none';
+        map.createPane('roadCorePane');
+        map.getPane('roadCorePane').style.zIndex = 431;
+        map.getPane('roadCorePane').style.pointerEvents = 'none';
+
+        var roadGlowLayer = L.geoJSON(null, {
+            pane: 'roadGlowPane',
+            style: function () {
+                return {
+                    color: '#168cff',
+                    weight: 8,
+                    opacity: 0.22,
+                    lineCap: 'round',
+                    lineJoin: 'round'
+                };
+            }
+        }).addTo(map);
+
+        var roadCoreLayer = L.geoJSON(null, {
+            pane: 'roadCorePane',
+            style: function () {
+                return {
+                    color: '#62d9ff',
+                    weight: 2,
+                    opacity: 0.88,
+                    lineCap: 'round',
+                    lineJoin: 'round'
+                };
+            }
+        }).addTo(map);
+
+        var roadRequestTimer = null;
+        var roadRequestController = null;
+        var lastRoadBoundsKey = '';
+
+        function loadGlowingRoads() {
+            if (map.getZoom() < 14) {
+                roadGlowLayer.clearLayers();
+                roadCoreLayer.clearLayers();
+                return;
+            }
+
+            var bounds = map.getBounds().pad(0.08);
+            var boundsKey = [
+                bounds.getSouth().toFixed(4),
+                bounds.getWest().toFixed(4),
+                bounds.getNorth().toFixed(4),
+                bounds.getEast().toFixed(4),
+                map.getZoom()
+            ].join(',');
+            if (boundsKey === lastRoadBoundsKey) return;
+            lastRoadBoundsKey = boundsKey;
+
+            if (roadRequestController) roadRequestController.abort();
+            roadRequestController = new AbortController();
+
+            var south = bounds.getSouth();
+            var west = bounds.getWest();
+            var north = bounds.getNorth();
+            var east = bounds.getEast();
+
+            var query = '[out:json][timeout:20];(' +
+                'way["highway"~"motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street"](' +
+                south + ',' + west + ',' + north + ',' + east + '););out geom;';
+            var endpoints = [
+                'https://overpass-api.de/api/interpreter',
+                'https://overpass.kumi.systems/api/interpreter'
+            ];
+
+            function requestEndpoint(index) {
+                if (index >= endpoints.length) {
+                    lastRoadBoundsKey = '';
+                    return Promise.reject(new Error('도로 데이터를 불러오지 못했습니다.'));
+                }
+                return fetch(endpoints[index], {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                    body: 'data=' + encodeURIComponent(query),
+                    signal: roadRequestController.signal
+                }).then(function (response) {
+                    if (!response.ok) throw new Error('도로 데이터 서버 응답 오류');
+                    return response.json();
+                }).catch(function (error) {
+                    if (error.name === 'AbortError') throw error;
+                    return requestEndpoint(index + 1);
+                });
+            }
+
+            requestEndpoint(0).then(function (data) {
+                if (!data || !Array.isArray(data.elements)) throw new Error('도로 데이터 형식 오류');
+
+                var features = data.elements
+                    .filter(function (way) {
+                        return way.type === 'way' && Array.isArray(way.geometry) && way.geometry.length > 1;
+                    })
+                    .map(function (way) {
+                        return {
+                            type: 'Feature',
+                            properties: { highway: way.tags && way.tags.highway ? way.tags.highway : '' },
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: way.geometry.map(function (point) {
+                                    return [point.lon, point.lat];
+                                })
+                            }
+                        };
+                    });
+
+                var collection = { type: 'FeatureCollection', features: features };
+                roadGlowLayer.clearLayers();
+                roadCoreLayer.clearLayers();
+                roadGlowLayer.addData(collection);
+                roadCoreLayer.addData(collection);
+            }).catch(function (error) {
+                if (error.name !== 'AbortError') {
+                    console.warn('도로 발광 레이어:', error.message);
+                    lastRoadBoundsKey = '';
+                }
+            });
+        }
+
+        function scheduleGlowingRoads() {
+            clearTimeout(roadRequestTimer);
+            roadRequestTimer = setTimeout(loadGlowingRoads, 650);
+        }
+
+        map.whenReady(loadGlowingRoads);
+        map.on('moveend zoomend', scheduleGlowingRoads);
+
 
         // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
         var markersGroup = L.markerClusterGroup({
