@@ -102,28 +102,18 @@
         .list-item img { width: 35px; height: 35px; border-radius: 4px; object-fit: cover; }
 
         /* 시간의 층위에 따른 크리스털 타임캡슐 마커 */
-        .crystal-capsule-marker {
-            background: transparent !important;
-            border: 0 !important;
-        }
-        .crystal-capsule-marker img {
-            width: 48px;
-            height: 68px;
-            object-fit: contain;
-            display: block;
-            filter: drop-shadow(0 4px 7px rgba(16, 55, 110, 0.28));
-            transform-origin: 50% 85%;
-        }
-        .crystal-capsule-marker.is-collected img {
-            filter: drop-shadow(0 0 8px rgba(255, 220, 120, 0.95)) saturate(1.18);
-        }
-
-        /* 필름 파편은 지면에 닿고, 바닥의 얇은 원형 핀이 위치를 표시합니다. */
+        .crystal-capsule-marker { background:transparent!important; border:0!important; pointer-events:auto; }
+        .capsule-ground-pin { position:relative; display:block; width:var(--cap-pin-w); height:var(--cap-pin-h); overflow:visible; }
+        .capsule-ground-pin .capsule-pin-ring { position:absolute; left:50%; bottom:1px; width:var(--cap-ring-w); height:var(--cap-ring-h); transform:translateX(-50%); border:1px solid rgba(130,225,255,.96); border-radius:50%; background:radial-gradient(ellipse,rgba(85,190,255,.30),rgba(20,85,165,.10) 58%,transparent 74%); box-shadow:0 0 7px rgba(65,190,255,.78),inset 0 0 5px rgba(160,235,255,.48); }
+        .capsule-ground-pin .capsule-pin-core { position:absolute; left:50%; bottom:calc(1px + var(--cap-ring-h)*.34); width:4px; height:4px; transform:translateX(-50%); border-radius:50%; background:#e5fbff; box-shadow:0 0 7px 2px rgba(75,190,255,.85); }
+        .capsule-ground-pin img { position:absolute; left:50%; bottom:calc(var(--cap-ring-h)*.40); width:var(--cap-img-w); height:var(--cap-img-h); transform:translateX(-50%); transform-origin:50% 90%; object-fit:contain; display:block; filter:drop-shadow(0 2px 4px rgba(8,30,60,.42)) drop-shadow(0 0 6px rgba(70,180,255,.52)); }
+        .crystal-capsule-marker.is-collected .capsule-ground-pin img { filter:drop-shadow(0 0 9px rgba(255,220,120,.92)) saturate(1.18); }
+        /* 필름은 얇은 막처럼 지면에 닿고, 바닥 원형 핀으로 위치를 표시합니다. */
         .crystal-film-marker { background:transparent!important; border:0!important; pointer-events:auto; }
         .film-ground-pin { position:relative; display:block; width:var(--pin-w); height:var(--pin-h); overflow:visible; }
-        .film-ground-pin .film-pin-ring { position:absolute; left:50%; bottom:1px; width:var(--ring-w); height:var(--ring-h); transform:translateX(-50%); border:1px solid rgba(111,220,255,.95); border-radius:50%; background:radial-gradient(ellipse,rgba(84,190,255,.34),rgba(22,95,180,.10) 55%,transparent 72%); box-shadow:0 0 5px rgba(56,190,255,.72), inset 0 0 4px rgba(130,225,255,.45); }
+        .film-ground-pin .film-pin-ring { position:absolute; left:50%; bottom:1px; width:var(--ring-w); height:var(--ring-h); transform:translateX(-50%); border:1px solid rgba(111,220,255,.95); border-radius:50%; background:radial-gradient(ellipse,rgba(84,190,255,.30),rgba(22,95,180,.09) 55%,transparent 72%); box-shadow:0 0 5px rgba(56,190,255,.68),inset 0 0 4px rgba(130,225,255,.42); }
         .film-ground-pin .film-pin-core { position:absolute; left:50%; bottom:calc(1px + var(--ring-h)*.34); width:3px; height:3px; transform:translateX(-50%); border-radius:50%; background:#d8f8ff; box-shadow:0 0 5px 2px rgba(75,190,255,.75); }
-        .film-ground-pin img { position:absolute; left:50%; bottom:calc(var(--ring-h)*.42); width:var(--shard-size); height:var(--shard-size); transform:translateX(-50%) rotate(var(--shard-rotation,0deg)); transform-origin:50% 85%; object-fit:contain; display:block; filter:drop-shadow(0 1px 2px rgba(10,35,75,.95)) drop-shadow(0 0 3px rgba(70,180,255,.72)); }
+        .film-ground-pin img { position:absolute; left:50%; bottom:calc(var(--ring-h)*.40); width:var(--shard-size); height:var(--shard-size); transform:translateX(-50%) rotate(var(--shard-rotation,0deg)); transform-origin:50% 90%; object-fit:contain; display:block; filter:drop-shadow(0 1px 2px rgba(10,35,75,.82)) drop-shadow(0 0 3px rgba(70,180,255,.65)); }
         #film-assembly-overlay {
             display:none; position:fixed; inset:0; z-index:12000;
             background:radial-gradient(ellipse at center, rgba(34,67,120,.92), rgba(5,10,24,.98));
@@ -152,6 +142,9 @@
         .crystal-film-marker img, .crystal-capsule-marker img {
             width:100%; height:100%; object-fit:contain; display:block;
         }
+        /* 마커 공통 규칙보다 개별 지면 오브젝트의 지정 크기를 우선합니다. */
+        .film-ground-pin img { width:var(--shard-size)!important; height:var(--shard-size)!important; }
+        .capsule-ground-pin img { width:var(--cap-img-w)!important; height:var(--cap-img-h)!important; }
     
         /* OSM 도로 벡터의 푸른 발광: 바탕 위성사진의 색과 선명도는 변경하지 않습니다. */
         #map .leaflet-roadGlowPane path {
@@ -469,9 +462,10 @@
         const map3d = new maplibregl.Map({
             container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty',
             center: [126.8646, 37.4784], zoom: 14.2, pitch: 58, bearing: -20,
-            minZoom: 11, maxZoom: 20, maxPitch: 68, antialias: true
+            minZoom: 11, maxZoom: 17.8, maxPitch: 64, antialias: true
         });
         map3d.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'top-right');
+        map3d.on('zoom', () => { if (map3d.getZoom() > 17.8) map3d.setZoom(17.8); });
 
         // 기존 게임 로직이 사용하던 Leaflet형 API를 얇은 호환 계층으로 유지합니다.
         const map = {
@@ -512,45 +506,78 @@
                 const zoom=map3d.getZoom(), films=[],others=[];
                 this.items.forEach(m=>{const cls=m.icon?.options?.className||'';(cls.includes('crystal-film-marker')?films:others).push(m);});
                 others.forEach(m=>{m.group=this;m._make();this.rendered.push(m);});
-                const cell=zoom<13.8?86:zoom<14.8?70:zoom<15.8?54:0;
+                const cell=zoom<13.6?112:zoom<14.6?92:zoom<15.5?74:zoom<16.2?54:0;
                 if(!cell){films.forEach(m=>{m.group=this;m._make();this.rendered.push(m);});return;}
                 const bins=new Map();films.forEach(m=>{const p=map3d.project([m.latlng[1],m.latlng[0]]);const k=Math.floor(p.x/cell)+':'+Math.floor(p.y/cell);if(!bins.has(k))bins.set(k,[]);bins.get(k).push(m);});
                 bins.forEach(items=>{if(items.length===1){const m=items[0];m.group=this;m._make();this.rendered.push(m);return;}
                     const lng=items.reduce((a,m)=>a+m.latlng[1],0)/items.length,lat=items.reduce((a,m)=>a+m.latlng[0],0)/items.length;
                     const el=document.createElement('div');el.className='film-cluster-badge';el.textContent=items.length;el.title='확대하면 필름 조각을 하나씩 볼 수 있습니다';
-                    const cluster=new maplibregl.Marker({element:el}).setLngLat([lng,lat]).addTo(map3d);el.addEventListener('click',()=>map3d.easeTo({center:[lng,lat],zoom:Math.min(19,zoom+2)}));
+                    const cluster=new maplibregl.Marker({element:el}).setLngLat([lng,lat]).addTo(map3d);el.addEventListener('click',()=>map3d.easeTo({center:[lng,lat],zoom:Math.min(17.8,zoom+1.6)}));
                     this.rendered.push({remove:()=>cluster.remove()});
                 });
             }
         }
 
-        // 위성사진 타일은 지도 바닥에 배치하고, 도시명/도로/건물 벡터는 그 위에 유지합니다.
+        // 실제 위성사진을 바닥에 깔고 도로·명칭·반투명 3D 건물을 위에 겹칩니다.
         map3d.on('load', () => {
-            const style=map3d.getStyle();
-            if(!map3d.getSource('satellite-imagery')){
-                map3d.addSource('satellite-imagery',{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256, attribution:'Imagery © Esri, Maxar, Earthstar Geographics'});
-                map3d.addLayer({id:'satellite-base',type:'raster',source:'satellite-imagery',paint:{'raster-opacity':1,'raster-saturation':-0.08,'raster-contrast':0.05}},style.layers[0]?.id);
+            const style = map3d.getStyle();
+            if (!map3d.getSource('satellite-imagery')) {
+                map3d.addSource('satellite-imagery', {
+                    type: 'raster',
+                    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                    tileSize: 256,
+                    attribution: 'Imagery © Esri, Maxar, Earthstar Geographics'
+                });
+                // 첫 background가 아니라 첫 벡터 레이어 앞에 넣어 위성사진이 실제로 보이게 합니다.
+                const firstVectorLayer = (style.layers || []).find(layer => layer.type !== 'background');
+                const rasterLayer = {id:'satellite-base',type:'raster',source:'satellite-imagery',paint:{'raster-opacity':1,'raster-saturation':0.08,'raster-contrast':0.08,'raster-brightness-min':0.02,'raster-brightness-max':0.96}};
+                if (firstVectorLayer) map3d.addLayer(rasterLayer, firstVectorLayer.id);
+                else map3d.addLayer(rasterLayer);
             }
-            // 위성사진이 보이도록 바닥의 불투명한 벡터 지면을 숨기고 텍스트·교통·건물 정보는 유지합니다.
-            (map3d.getStyle().layers||[]).forEach(layer=>{
-                if(layer.type==='background'||(layer.type==='fill' && !/water|park|forest|wood|landcover/i.test(layer.id))) { try{map3d.setLayoutProperty(layer.id,'visibility','none');}catch(e){} }
+            // 위성사진을 가리는 불투명한 토지/공원 색면을 숨깁니다. 도로·라벨·3D 건물은 유지합니다.
+            (map3d.getStyle().layers || []).forEach(layer => {
+                try {
+                    if (layer.type === 'background' || layer.type === 'fill') {
+                        map3d.setLayoutProperty(layer.id, 'visibility', 'none');
+                    } else if (layer.type === 'fill-extrusion') {
+                        map3d.setPaintProperty(layer.id, 'fill-extrusion-color', '#a9c4d7');
+                        map3d.setPaintProperty(layer.id, 'fill-extrusion-opacity', 0.48);
+                    }
+                } catch (e) {}
             });
             addGwangmyeongBoundary();
+            map3d.setMaxZoom(17.8);
         });
 
-        function addGwangmyeongBoundary(){
-            const url='https://nominatim.openstreetmap.org/search?format=geojson&polygon_geojson=1&limit=1&q='+encodeURIComponent('Gwangmyeong-si, Gyeonggi-do, South Korea');
-            fetch(url,{headers:{'Accept':'application/geo+json'}}).then(r=>{if(!r.ok)throw Error('경계 데이터 응답 오류');return r.json();}).then(data=>{
-                const f=(data.features||[]).find(x=>x.geometry&&(x.geometry.type==='Polygon'||x.geometry.type==='MultiPolygon'));if(!f)throw Error('광명시 경계 없음');
-                map3d.addSource('gwangmyeong-boundary',{type:'geojson',data:f});
-                map3d.addLayer({id:'gwangmyeong-navy-area',type:'fill',source:'gwangmyeong-boundary',paint:{'fill-color':'#173f70','fill-opacity':0.26}});
-                map3d.addLayer({id:'gwangmyeong-edge-glow',type:'line',source:'gwangmyeong-boundary',paint:{'line-color':'#55bfff','line-width':5,'line-opacity':0.30,'line-blur':3}});
-                map3d.addLayer({id:'gwangmyeong-edge-core',type:'line',source:'gwangmyeong-boundary',paint:{'line-color':'#b4eaff','line-width':1.3,'line-opacity':0.9}});
-                const b=new maplibregl.LngLatBounds();const walk=c=>{if(typeof c[0]==='number')b.extend(c);else c.forEach(walk)};walk(f.geometry.coordinates);map3d.fitBounds(b,{padding:45,maxZoom:14.4,duration:800});
-                const sources=map3d.getStyle().sources||{};if(sources.openmaptiles&&!map3d.getLayer('gwangmyeong-3d-buildings')){
-                    map3d.addLayer({id:'gwangmyeong-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:13,paint:{'fill-extrusion-color':['interpolate',['linear'],['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],8],0,'#8ca6bd',12,'#a8bfd2',40,'#c5d7e5'],'fill-extrusion-height':['max',5,['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],8]],'fill-extrusion-base':['coalesce',['to-number',['get','render_min_height']],0],'fill-extrusion-opacity':0.92}},'gwangmyeong-edge-core');
-                }
-            }).catch(e=>console.warn('광명시 경계 표시 실패:',e));
+        function addGwangmyeongBoundary() {
+            const url = 'https://nominatim.openstreetmap.org/search?format=geojson&polygon_geojson=1&limit=1&q=' + encodeURIComponent('Gwangmyeong-si, Gyeonggi-do, South Korea');
+            fetch(url, {headers:{'Accept':'application/geo+json'}})
+                .then(r => { if (!r.ok) throw Error('경계 데이터 응답 오류'); return r.json(); })
+                .then(data => {
+                    const f = (data.features || []).find(x => x.geometry && (x.geometry.type === 'Polygon' || x.geometry.type === 'MultiPolygon'));
+                    if (!f) throw Error('광명시 경계 없음');
+                    map3d.addSource('gwangmyeong-boundary', {type:'geojson', data:f});
+                    const layers = map3d.getStyle().layers || [];
+                    const firstSymbol = layers.find(layer => layer.type === 'symbol');
+                    const firstBuilding = layers.find(layer => layer.type === 'fill-extrusion');
+                    const beforeFill = firstBuilding?.id || firstSymbol?.id;
+                    map3d.addLayer({id:'gwangmyeong-navy-area',type:'fill',source:'gwangmyeong-boundary',paint:{'fill-color':'#183f70','fill-opacity':0.25}}, beforeFill);
+
+                    // 원래 지도 스타일에 건물 높이 레이어가 없을 때만 별도 3D 건물을 추가합니다.
+                    const hasExtrusion = (map3d.getStyle().layers || []).some(layer => layer.type === 'fill-extrusion');
+                    const hasBuildings = !!(map3d.getStyle().sources || {}).openmaptiles;
+                    if (!hasExtrusion && hasBuildings) {
+                        map3d.addLayer({id:'gwangmyeong-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:13,paint:{'fill-extrusion-color':'#a9c4d7','fill-extrusion-height':['max',4,['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],7]],'fill-extrusion-base':['coalesce',['to-number',['get','render_min_height']],0],'fill-extrusion-opacity':0.48}}, firstSymbol?.id);
+                    }
+                    const symbolId = (map3d.getStyle().layers || []).find(layer => layer.type === 'symbol')?.id;
+                    map3d.addLayer({id:'gwangmyeong-edge-glow',type:'line',source:'gwangmyeong-boundary',paint:{'line-color':'#55bfff','line-width':4,'line-opacity':0.28,'line-blur':2.5}}, symbolId);
+                    map3d.addLayer({id:'gwangmyeong-edge-core',type:'line',source:'gwangmyeong-boundary',paint:{'line-color':'#b4eaff','line-width':1.2,'line-opacity':0.88}}, symbolId);
+                    const b = new maplibregl.LngLatBounds();
+                    const walk = c => { if (typeof c[0] === 'number') b.extend(c); else c.forEach(walk); };
+                    walk(f.geometry.coordinates);
+                    map3d.fitBounds(b, {padding:55,maxZoom:14.2,duration:800});
+                })
+                .catch(e => console.warn('광명시 경계 표시 실패:', e));
         }
 
         // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
@@ -690,31 +717,32 @@
         // 지도 확대/축소 단계에 맞춰 필름 조각 마커의 실제 픽셀 크기를 조정합니다.
         // 원본 이미지의 가로세로 비율은 object-fit: contain으로 그대로 유지합니다.
         function getFilmMarkerIcon(shardImage, zoomLevel) {
-            // 실제 수집물은 지면에 붙어 보이도록 작게 표시합니다. 최대 확대에서도 과도하게 커지지 않습니다.
-            const t = Math.max(0, Math.min(1, (zoomLevel - 15) / 4));
-            const shard = Math.round(8 + t * 7);       // 약 8~15px
-            const ringW = Math.round(15 + t * 9);      // 얇은 원형 위치 핀
+            // 기존보다 약 1.5배 키우되 최대 확대에서도 22px로 제한합니다.
+            const t = Math.max(0, Math.min(1, (zoomLevel - 14.5) / 3.0));
+            const shard = Math.round(12 + t * 10);       // 12~22px
+            const ringW = Math.round(17 + t * 9);
             const ringH = Math.round(5 + t * 2);
-            const width = ringW + 8;
-            const height = shard + ringH + 3;
+            const width = ringW + 10;
+            const height = shard + ringH + 4;
             return L.divIcon({
                 className: 'crystal-film-marker',
-                html: `<span class="film-ground-pin" style="--pin-w:${width}px;--pin-h:${height}px;--shard-size:${shard}px;--ring-w:${ringW}px;--ring-h:${ringH}px"><span class="film-pin-ring"></span><span class="film-pin-core"></span><img src="${shardImage}" alt="크리스털 필름 파편"></span>`,
-                iconSize: [width, height],
-                iconAnchor: [width / 2, height]
+                html: `<span class="film-ground-pin" style="--pin-w:${width}px;--pin-h:${height}px;--shard-size:${shard}px;--ring-w:${ringW}px;--ring-h:${ringH}px"><span class="film-pin-ring"></span><span class="film-pin-core"></span><img src="${shardImage}" alt=""></span>`,
+                iconSize: [width, height], iconAnchor: [width / 2, height]
             });
         }
 
         function getCapsuleMarkerIcon(capsuleImage, collected, zoomLevel) {
-            const scale = Math.max(0.75, Math.min(1.5, Math.pow(1.10, zoomLevel - 14)));
-            const width = Math.round(44 * scale);
-            const height = Math.round(62 * scale);
+            const t = Math.max(0, Math.min(1, (zoomLevel - 13.5) / 3.5));
+            const imgW = Math.round(34 + t * 8);
+            const imgH = Math.round(48 + t * 10);
+            const ringW = Math.round(30 + t * 8);
+            const ringH = Math.round(8 + t * 2);
+            const width = ringW + 12;
+            const height = imgH + ringH + 4;
             return L.divIcon({
                 className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
-                html: `<img src="${capsuleImage}" alt="크리스털 타임캡슐">`,
-                iconSize: [width, height],
-                iconAnchor: [width / 2, height - 5],
-                popupAnchor: [0, -height + 5]
+                html: `<span class="capsule-ground-pin" style="--cap-pin-w:${width}px;--cap-pin-h:${height}px;--cap-img-w:${imgW}px;--cap-img-h:${imgH}px;--cap-ring-w:${ringW}px;--cap-ring-h:${ringH}px"><span class="capsule-pin-ring"></span><span class="capsule-pin-core"></span><img src="${capsuleImage}" alt=""></span>`,
+                iconSize: [width, height], iconAnchor: [width / 2, height], popupAnchor: [0, -height + 5]
             });
         }
 
