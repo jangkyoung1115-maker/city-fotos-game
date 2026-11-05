@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>광명시 시간캡슐 — 3D 지도 시안</title>
+<title>광명시 시간캡슐 — 3D 지도 시안 2</title>
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
 :root{--navy:rgba(4,20,38,.88);--line:#8edfff;--cyan:#69dcff}
@@ -21,8 +21,8 @@
 .close{position:absolute;right:8px;top:8px;border:1px solid #8edfff88;border-radius:50%;width:28px;height:28px;color:white;background:#09243b;font-size:18px;cursor:pointer}
 .reopen{display:none;position:absolute;z-index:5;left:16px;bottom:20px;padding:10px 14px;color:white;background:var(--navy);border:1px solid #8edfff;border-radius:12px}
 .legend{position:absolute;right:18px;bottom:20px;z-index:5;color:#dff7ff;background:var(--navy);border:1px solid #8edfff88;border-radius:14px;padding:12px 15px;font-size:12px}
-.gem{width:22px;height:42px;object-fit:contain;filter:drop-shadow(0 0 9px #62cfff)}
-.shard{width:34px;height:34px;object-fit:contain;filter:drop-shadow(0 0 8px #4bcaff)}
+.gem{width:24px;height:44px;object-fit:contain;filter:drop-shadow(0 0 7px #62cfff)}
+.shard{width:27px;height:27px;object-fit:contain;filter:drop-shadow(0 0 6px #4bcaff);opacity:.94}
 .maplibregl-marker{cursor:pointer}
 .note{position:absolute;z-index:5;top:78px;right:16px;max-width:300px;padding:9px 12px;color:#d8f3ff;background:#061b2ccc;border:1px solid #62cfff66;border-radius:10px;font-size:11px}
 @media(max-width:650px){.brand{top:10px;left:10px}.brand b{font-size:15px}.status{top:58px;gap:8px;padding:8px 10px;font-size:11px}.status strong{font-size:14px}.guide{left:10px;bottom:12px;width:calc(100% - 20px);padding:12px}.legend{display:none}.note{top:108px;right:8px}}
@@ -42,7 +42,7 @@
 </div>
 <button class="reopen" id="reopen" onclick="document.getElementById('guide').style.display='block';this.style.display='none'">수집 안내</button>
 <div class="legend">TIME CAPSULES　💎 현대　💠 중간 시대　▤ 오래된 기억</div>
-<div class="note">광명시 경계 안쪽만 옅은 남색으로 강조 · 3D 사선 지도</div>
+<div class="note">광명시 행정구역 안쪽만 부드러운 남색으로 강조 · 3D 사선 지도</div>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -112,15 +112,15 @@ function addGwangmyeongDesign(geometry){
  }
  if(!map.getLayer('gwangmyeong-blue-fill')){
   map.addLayer({id:'gwangmyeong-blue-fill',type:'fill',source:'gwangmyeong-boundary',
-   paint:{'fill-color':'#244f83','fill-opacity':0.34}},before);
+   paint:{'fill-color':'#527eb5','fill-opacity':0.25}},before);
  }
  if(!map.getLayer('gwangmyeong-boundary-glow')){
   map.addLayer({id:'gwangmyeong-boundary-glow',type:'line',source:'gwangmyeong-boundary',
-   paint:{'line-color':'#168dff','line-width':7,'line-opacity':0.38,'line-blur':3.5}},before);
+   paint:{'line-color':'#3c9fff','line-width':5,'line-opacity':0.30,'line-blur':3}},before);
  }
  if(!map.getLayer('gwangmyeong-boundary-core')){
   map.addLayer({id:'gwangmyeong-boundary-core',type:'line',source:'gwangmyeong-boundary',
-   paint:{'line-color':'#8ce8ff','line-width':1.7,'line-opacity':0.95}},before);
+   paint:{'line-color':'#a9eaff','line-width':1.35,'line-opacity':0.92}},before);
  }
 
  if(style.sources.openmaptiles){
@@ -131,11 +131,11 @@ function addGwangmyeongDesign(geometry){
     paint:{
      'fill-extrusion-color':['interpolate',['linear'],
       ['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],9],
-      0,'#536f89',12,'#6d8ca8',35,'#8eabc1',80,'#b3c9dc'],
+      0,'#829bb5',12,'#9bb3ca',35,'#b3c9dc',80,'#d0deea'],
      'fill-extrusion-height':['max',6,
       ['coalesce',['to-number',['get','render_height']],['to-number',['get','height']],9]],
      'fill-extrusion-base':['coalesce',['to-number',['get','render_min_height']],['to-number',['get','min_height']],0],
-     'fill-extrusion-opacity':0.92,
+     'fill-extrusion-opacity':0.88,
      'fill-extrusion-vertical-gradient':true
     }},before);
   }
@@ -147,14 +147,14 @@ function addGwangmyeongDesign(geometry){
   if(!map.getLayer('gwangmyeong-road-glow')){
    map.addLayer({id:'gwangmyeong-road-glow',type:'line',source:'openmaptiles',
     'source-layer':'transportation',filter:roadFilter,minzoom:12,
-    paint:{'line-color':'#168dff','line-width':['interpolate',['linear'],['zoom'],12,1.5,16,5,19,8],
-     'line-opacity':0.58,'line-blur':3.8}},before);
+    paint:{'line-color':'#55b8f2','line-width':['interpolate',['linear'],['zoom'],12,1,16,3.2,19,5],
+     'line-opacity':0.38,'line-blur':2.8}},before);
   }
   if(!map.getLayer('gwangmyeong-road-core')){
    map.addLayer({id:'gwangmyeong-road-core',type:'line',source:'openmaptiles',
     'source-layer':'transportation',filter:roadFilter,minzoom:12,
-    paint:{'line-color':'#8ceaff','line-width':['interpolate',['linear'],['zoom'],12,0.45,16,1.2,19,1.8],
-     'line-opacity':0.88}},before);
+    paint:{'line-color':'#b3eaff','line-width':['interpolate',['linear'],['zoom'],12,0.35,16,0.85,19,1.25],
+     'line-opacity':0.72}},before);
   }
  }
 }
