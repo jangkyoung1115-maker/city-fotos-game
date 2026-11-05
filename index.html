@@ -21,9 +21,11 @@
         /* 상단 UI 패널 */
         .top-panel {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95); padding: 10px 18px; border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 11px;
+            background: rgba(255, 255, 255, 0.95); padding: 10px 18px; border-radius: 22px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; justify-content:center; flex-wrap:wrap; gap: 8px; font-weight: bold; font-size: 11px; width:max-content; max-width:94vw; box-sizing:border-box;
         }
+        .fragment-badge { color:#1686b8; }
+        .completed-badge { color:#5146a5; }
         .resource-badge { color: #ff5722; }
         .step-badge { color: #4caf50; }
         .action-btn { background: #3f51b5; color: white; border: none; padding: 6px 10px; border-radius: 15px; cursor: pointer; font-size: 11px; }
@@ -111,7 +113,7 @@
 
         .crystal-film-marker { background: transparent !important; border: 0 !important; }
         .crystal-film-marker img {
-            width: 34px; height: 34px; object-fit: contain; display: block;
+            width: 100%; height: 100%; object-fit: contain; display: block;
             filter: drop-shadow(0 2px 5px rgba(20,80,170,.65));
             animation: shard-float 2.8s ease-in-out infinite;
         }
@@ -141,18 +143,149 @@
         @keyframes completed-film-appear { 0% {opacity:0; transform:translate(-50%,-50%) scale(.55) rotate(-8deg)} 65% {opacity:1; transform:translate(-50%,-50%) scale(1.08) rotate(2deg)} 100% {opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0)} }
         #assembly-caption { margin-top:4px; font-size:15px; letter-spacing:.08em; text-shadow:0 0 12px #65cfff; }
     </style>
+
+    <style id="crystal-interface-theme">
+        :root {
+            --night:#071523; --glass:rgba(7,25,43,.82); --line:rgba(167,218,255,.48);
+            --ice:#bdeaff; --cyan:#42cfff; --violet:#9c8bff;
+        }
+        html, body { background:var(--night); color:#eef8ff; }
+        #map { background:#0b1c2b; }
+        .leaflet-container { background:#0b1c2b; }
+        .leaflet-tile { filter:saturate(.78) brightness(.72) contrast(1.08); }
+        .brand-mark {
+            position:fixed; z-index:1100; top:18px; left:22px; display:flex; align-items:center; gap:12px;
+            color:#f3fbff; text-shadow:0 2px 12px #00101e; pointer-events:none;
+        }
+        .brand-symbol { width:42px; height:42px; display:grid; place-items:center; border:1px solid #b9e8ff;
+            border-radius:13px 4px 13px 4px; color:#d9f5ff; font-size:35px; line-height:1;
+            background:linear-gradient(145deg,rgba(93,190,255,.32),rgba(16,40,68,.7)); box-shadow:0 0 20px #3ebcff55; }
+        .brand-mark strong { display:block; font-size:20px; letter-spacing:-.04em; }
+        .brand-mark span { display:block; margin-top:3px; font-size:10px; color:#b7d6e9; letter-spacing:.04em; }
+        .top-panel {
+            position:fixed; top:16px; left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100% - 390px);
+            min-height:54px; box-sizing:border-box; padding:9px 15px; gap:13px; flex-wrap:wrap; justify-content:center;
+            border:1px solid var(--line); border-radius:18px; color:#edfaff; font-size:12px;
+            background:linear-gradient(135deg,rgba(7,25,43,.92),rgba(22,53,81,.84));
+            box-shadow:0 10px 32px #00101e88,inset 0 1px 0 #ffffff22; backdrop-filter:blur(14px);
+        }
+        .top-panel > span { white-space:nowrap; }
+        .fragment-badge,.completed-badge { color:#8fe6ff; font-size:17px; font-weight:800; }
+        .step-badge { color:#b4f2d0; }
+        .action-btn { border:1px solid #7fcfff88; border-radius:11px; padding:8px 11px; color:#eaf8ff;
+            background:linear-gradient(145deg,#17446b,#10283f); box-shadow:inset 0 1px #ffffff22; }
+        .action-btn:hover { background:#21608a; }
+        .admin-btn { background:#513e83; }.list-btn {background:#315a7b;}.bulk-btn {background:#126a7c;}
+        .guide-banner {
+            bottom:18px; max-width:min(560px,88vw); padding:10px 18px; border:1px solid #9ddcff88;
+            border-radius:14px; background:rgba(5,20,35,.86); color:#dff6ff; font-size:12px;
+            box-shadow:0 8px 26px #00101e99; backdrop-filter:blur(12px);
+        }
+        .collection-panel,.capsule-key {
+            position:fixed; z-index:1050; color:#eaf8ff; border:1px solid var(--line);
+            background:linear-gradient(145deg,rgba(5,22,39,.91),rgba(16,43,67,.82));
+            box-shadow:0 12px 35px #00101e88,inset 0 1px 0 #ffffff18; backdrop-filter:blur(13px);
+        }
+        .collection-panel { left:18px; bottom:86px; width:286px; padding:16px 17px 13px; border-radius:17px; }
+        .panel-kicker,.key-title { color:#83dfff; font-size:9px; letter-spacing:.18em; font-weight:800; }
+        .collection-panel h3 { margin:5px 0 12px; font-size:16px; color:#fff; }
+        .rule-line { display:flex; align-items:center; justify-content:space-between; gap:7px; padding:9px 0;
+            border-top:1px solid #b5ddf32b; font-size:11px; color:#d6eafa; }
+        .rule-line b { color:#fff; font-size:13px; }
+        .rule-line i { color:#72dfff; font-style:normal; font-size:19px; }
+        .rule-icon { color:#75dcff; font-size:19px; }
+        .collection-panel p { margin:8px 0 0; color:#a8c9dc; font-size:10px; line-height:1.5; }
+        .capsule-key { right:18px; bottom:86px; display:flex; align-items:center; gap:12px; padding:11px 14px;
+            border-radius:14px; font-size:10px; color:#d4eafa; }
+        .capsule-key > div:not(.key-title) { display:flex; align-items:center; gap:5px; white-space:nowrap; }
+        .key-gem { display:inline-block; width:9px; height:19px; border:1px solid #d5f5ff;
+            transform:skewY(-13deg); box-shadow:0 0 9px #69cfff; }
+        .gem-modern {background:linear-gradient(#fff,#8edcff,#fff);}
+        .gem-mid {background:linear-gradient(120deg,#6ffcff,#a28bff,#fff);}
+        .gem-old {background:repeating-linear-gradient(0deg,#145b9a 0 4px,#9eeaff 5px 7px);}
+        .gem-ancient {background:linear-gradient(120deg,#806e5c,#173c69,#63cfff);}
+        .crystal-capsule-marker img { filter:drop-shadow(0 0 9px rgba(71,183,255,.65)); }
+        .crystal-capsule-marker.is-collected img { filter:drop-shadow(0 0 12px rgba(255,220,120,.95)) saturate(1.2); }
+        .crystal-film-marker img { filter:drop-shadow(0 0 9px rgba(54,190,255,.9)); }
+        .modal {
+            color:#eaf8ff; background:linear-gradient(145deg,#102a43,#071827); border:1px solid #8edbff88;
+            border-radius:18px; box-shadow:0 20px 65px #000b,inset 0 1px 0 #ffffff22; backdrop-filter:blur(16px);
+        }
+        .modal h3 { color:#f3fbff; }
+        .modal p { color:#c0d8e9 !important; }
+        .form-input { color:#eaf8ff; background:#0b2033; border:1px solid #4c7895; }
+        .form-input::placeholder { color:#88a9bd; }
+        .btn { background:linear-gradient(100deg,#087fbd,#4c8dff); box-shadow:0 5px 18px #168bdf44; }
+        .btn-secondary { color:#dcecf7; background:#29445b; }
+        .title-badge-box { color:#bfeaff; background:#17334b; border-color:#5f9fca; }
+        .photo-slot { background:#10283b; border-color:#54758b; }
+        .photo-slot.filled { background:#0c2235; border-color:#8ddcff; }
+        .list-item { border-color:#29465d; }
+        .leaflet-popup-content-wrapper,.leaflet-popup-tip { color:#eaf8ff; background:#102b43; }
+        .leaflet-popup-content { color:#eaf8ff; }
+        .leaflet-control-zoom a { color:#e8f8ff !important; background:#102b43 !important; border-color:#5a8aa9 !important; }
+        @media (max-width:900px) {
+            .brand-mark {top:12px;left:12px}.brand-mark strong{font-size:15px}.brand-mark span{font-size:9px}
+            .brand-symbol{width:34px;height:34px;font-size:28px}
+            .top-panel {top:62px;max-width:calc(100% - 20px);width:calc(100% - 20px);gap:7px;padding:8px;border-radius:14px}
+            .top-panel .action-btn {font-size:10px;padding:6px 8px}
+            .collection-panel {left:10px;bottom:76px;width:min(245px,62vw);padding:11px 12px}
+            .collection-panel h3{font-size:14px;margin-bottom:7px}
+            .rule-line{font-size:9px;padding:6px 0}.rule-line b{font-size:11px}
+            .capsule-key {right:10px;bottom:76px;display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:9px;font-size:9px}
+            .key-title {grid-column:1/-1}
+            .guide-banner {bottom:10px;font-size:10px}
+        }
+        @media (max-width:520px) {
+            .brand-mark {top:10px;left:10px}
+            .top-panel {top:56px}
+            .collection-panel {bottom:66px;width:calc(100% - 20px);left:10px;box-sizing:border-box}
+            .capsule-key {display:none}
+            .guide-banner {bottom:7px;max-width:94vw}
+        }
+    </style>
+
 </head>
 <body>
 
+    <!-- 작품형 게임 타이틀 -->
+    <div class="brand-mark">
+        <div class="brand-symbol">⌁</div>
+        <div><strong>광명의 시간캡슐</strong><span>도시의 기억을 수집하는 필름 탐험</span></div>
+    </div>
+
     <!-- 상단 상태바 -->
     <div class="top-panel">
-        <span>🎞️ <span id="film-count" class="resource-badge">15</span></span>
+        <span>✧ 파편 <span id="fragment-count" class="fragment-badge">0</span>/5</span>
+        <span>🎞 완성 필름 <span id="completed-film-count" class="completed-badge">15</span></span>
         <span>👣 <span id="step-count" class="step-badge">0</span></span>
         <button class="action-btn" onclick="openAlbum()">사진첩(도감)</button>
         <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">타임캡슐 등록</button>
         <button id="admin-bulk-btn" class="action-btn bulk-btn" onclick="toggleBulkFilmMode()">필름 연속 배치: OFF</button>
         <button id="admin-list-btn" class="action-btn list-btn" onclick="openAdminListModal()">캡슐 목록</button>
     </div>
+
+    <!-- 수집 규칙 패널 -->
+    <section class="collection-panel" aria-label="수집 규칙">
+        <div class="panel-kicker">COLLECTION GUIDE</div>
+        <h3>기억을 모으는 방법</h3>
+        <div class="rule-line">
+            <span class="rule-icon">✦</span><span>필름 파편 <b>5개</b></span><i>→</i><span>완성 필름 <b>1개</b></span>
+        </div>
+        <div class="rule-line">
+            <span class="rule-icon">▤</span><span>완성 필름 <b>10개</b></span><i>→</i><span>타임캡슐 <b>1개</b></span>
+        </div>
+        <p>도시 곳곳에 흩어진 기억의 조각을 찾아보세요.</p>
+    </section>
+
+    <!-- 캡슐 시대별 안내 -->
+    <section class="capsule-key" aria-label="타임캡슐 종류">
+        <div class="key-title">TIME CAPSULES</div>
+        <div><span class="key-gem gem-modern"></span><span>현대</span></div>
+        <div><span class="key-gem gem-mid"></span><span>중간 시대</span></div>
+        <div><span class="key-gem gem-old"></span><span>오래된 기억</span></div>
+        <div><span class="key-gem gem-ancient"></span><span>오래된 층위</span></div>
+    </section>
 
     <!-- 하단 가이드 배너 -->
     <div id="guide-banner" class="guide-banner">
@@ -166,8 +299,8 @@
     <div id="discovery-modal" class="modal">
         <h3 id="discovery-title">⏳ 타임캡슐 발견!</h3>
         <p id="discovery-desc">추억의 옛 풍경이 담긴 타임캡슐입니다.</p>
-        <p style="font-size: 13px; color: #666;">필요 자원: 빛바랜 필름 10개</p>
-        <button class="btn" onclick="startMission()">필름 파편 10개를 조합해 개봉하기</button>
+        <p style="font-size: 13px; color: #666;">필요 자원: 완성된 크리스털 필름 10개</p>
+        <button class="btn" onclick="startMission()">완성 필름 10개로 타임캡슐 개봉하기</button>
         <button class="btn btn-secondary" onclick="closeModal('discovery-modal')">나중에 하기</button>
     </div>
 
@@ -195,6 +328,7 @@
     <!-- 3. 100개 슬롯 도감 모달 & 칭호 시스템 -->
     <div id="album-modal" class="modal" style="max-width: 440px;">
         <h3>📖 광명시 타임슬립 100선 도감</h3>
+        <div style="font-size:12px; color:#426b8c; margin-bottom:8px;">필름 파편 <b id="album-fragment-count">0</b>/5 · 완성 필름 <b id="album-completed-count">15</b></div>
         <div id="region-title-box" class="title-badge-box">
             현재 칭호: <span id="current-region-title">초보 탐험가</span> (0/100 수집)
         </div>
@@ -295,9 +429,9 @@
 
         var map = L.map('map').setView([37.4784, 126.8646], 14);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 19,
-            attribution: '© OpenStreetMap'
+            attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics'
         }).addTo(map);
 
         // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
@@ -323,31 +457,58 @@
 
         let totalSteps = 0;
         let accumulatedMeters = 0;
-        let userFilms = 15;
+        // 파편 5개를 모으면 완성 필름 1개가 됩니다.
+        // 기존 gwangmyeong_films 값은 과거의 완성 자원으로 간주해 그대로 보존합니다.
+        let userFragments = 0;
+        let completedFilms = 15;
         let isFirstGPS = true;
+
+        function updateResourceDisplay() {
+            document.getElementById('fragment-count').innerText = userFragments;
+            document.getElementById('completed-film-count').innerText = completedFilms;
+        }
 
         function loadUserData() {
             let savedSteps = localStorage.getItem('gwangmyeong_steps');
             let savedMeters = localStorage.getItem('gwangmyeong_meters');
-            let savedFilms = localStorage.getItem('gwangmyeong_films');
+            let savedFragments = localStorage.getItem('gwangmyeong_fragments');
+            let savedCompleted = localStorage.getItem('gwangmyeong_completed_films');
+            let legacyFilms = localStorage.getItem('gwangmyeong_films');
 
-            if (savedSteps !== null) totalSteps = parseInt(savedSteps);
-            if (savedMeters !== null) accumulatedMeters = parseFloat(savedMeters);
-            if (savedFilms !== null) {
-                userFilms = parseInt(savedFilms);
+            if (savedSteps !== null) totalSteps = parseInt(savedSteps, 10) || 0;
+            if (savedMeters !== null) accumulatedMeters = parseFloat(savedMeters) || 0;
+            if (savedFragments !== null) userFragments = Math.max(0, parseInt(savedFragments, 10) || 0);
+            if (savedCompleted !== null) {
+                completedFilms = Math.max(0, parseInt(savedCompleted, 10) || 0);
             } else {
-                userFilms = 15;
-                localStorage.setItem('gwangmyeong_films', userFilms);
+                // 이전 버전의 필름 수량을 잃지 않도록 완성 필름 수량으로 이전합니다.
+                completedFilms = legacyFilms !== null ? Math.max(0, parseInt(legacyFilms, 10) || 0) : 15;
             }
 
             document.getElementById('step-count').innerText = totalSteps;
-            document.getElementById('film-count').innerText = userFilms;
+            updateResourceDisplay();
+            saveUserData();
         }
 
         function saveUserData() {
             localStorage.setItem('gwangmyeong_steps', totalSteps);
             localStorage.setItem('gwangmyeong_meters', accumulatedMeters);
-            localStorage.setItem('gwangmyeong_films', userFilms);
+            localStorage.setItem('gwangmyeong_fragments', userFragments);
+            localStorage.setItem('gwangmyeong_completed_films', completedFilms);
+            // 구버전 호환을 위해 기존 키에는 완성 필름 수량을 기록합니다.
+            localStorage.setItem('gwangmyeong_films', completedFilms);
+        }
+
+        function collectFilmFragment(amount = 1) {
+            userFragments += amount;
+            const newlyCompleted = Math.floor(userFragments / 5);
+            if (newlyCompleted > 0) {
+                userFragments %= 5;
+                completedFilms += newlyCompleted;
+                alert(`✨ 필름 파편 5개가 모여 완성 필름 ${newlyCompleted}개가 되었습니다!`);
+            }
+            updateResourceDisplay();
+            saveUserData();
         }
 
         function initRealtimeData() {
@@ -407,6 +568,30 @@
         }
 
         // 🌟 모든 마커를 클러스터 그룹에 등록하여 깔끔하게 관리
+        // 지도 확대/축소 단계에 맞춰 필름 조각 마커의 실제 픽셀 크기를 조정합니다.
+        // 원본 이미지의 가로세로 비율은 object-fit: contain으로 그대로 유지합니다.
+        function getFilmMarkerIcon(shardImage, zoomLevel) {
+            const scale = Math.max(0.72, Math.min(1.65, Math.pow(1.13, zoomLevel - 14)));
+            const size = Math.round(32 * scale);
+            return L.divIcon({
+                className: 'crystal-film-marker',
+                html: `<img src="${shardImage}" alt="푸른 크리스털 필름 파편">`,
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2]
+            });
+        }
+
+        function updateFilmMarkerSizes() {
+            const zoomLevel = map.getZoom();
+            Object.values(filmMarkers).forEach(marker => {
+                if (marker && marker._filmShardImage) {
+                    marker.setIcon(getFilmMarkerIcon(marker._filmShardImage, zoomLevel));
+                }
+            });
+        }
+
+        map.on('zoomend', updateFilmMarkerSizes);
+
         function renderAllMarkers() {
             markersGroup.clearLayers();
             capsuleMarkers = {};
@@ -449,14 +634,9 @@
                 for (let i = 0; i < filmIdText.length; i++) filmHash = (filmHash + filmIdText.charCodeAt(i) * (i + 1)) % 997;
                 let shardNumber = (filmHash % 18) + 1;
                 let shardImage = `assets/film/film_fragment_${String(shardNumber).padStart(2, '0')}.png`;
-                let miniFilmIcon = L.divIcon({
-                    className: 'crystal-film-marker',
-                    html: `<img src="${shardImage}" alt="푸른 크리스털 필름 파편">`,
-                    iconSize: [38, 38],
-                    iconAnchor: [19, 19]
-                });
-
+                let miniFilmIcon = getFilmMarkerIcon(shardImage, map.getZoom());
                 let marker = L.marker([film.lat, film.lon], {icon: miniFilmIcon});
+                marker._filmShardImage = shardImage;
                 
                 if (isAdminMode) {
                     marker.bindPopup("<b>🛠️ [관리자] 필름 조각</b><br>클릭하면 이 필름이 삭제됩니다.");
@@ -472,10 +652,8 @@
                     } else {
                         let dist = getDistanceFromLatLonInMeters(currentLat, currentLon, film.lat, film.lon);
                         if (dist <= 40) {
-                            userFilms += 2;
-                            document.getElementById('film-count').innerText = userFilms;
-                            saveUserData();
-                            alert("💎 크리스털 필름 파편을 수집했습니다! (+2개)");
+                            collectFilmFragment(1);
+                            alert("💎 크리스털 필름 파편 1개를 수집했습니다!");
                             db.collection("admin_films").doc(film.id).delete();
                         } else {
                             alert("너무 멀리 있습니다! 필름 조각 가까이 다가가세요. (40m 이내)");
@@ -528,10 +706,8 @@
                                 saveUserData();
 
                                 if (totalSteps % 1000 === 0) {
-                                    userFilms += 1;
-                                    document.getElementById('film-count').innerText = userFilms;
-                                    saveUserData();
-                                    alert("👣 1000걸음 달성! 보상으로 필름 1개가 충전되었습니다!");
+                                    collectFilmFragment(1);
+                                    alert("👣 1000걸음 달성! 필름 파편 1개를 얻었습니다!");
                                 }
                             }
                         }
@@ -642,9 +818,10 @@
             reveal.style.animation = 'none';
             reveal.offsetHeight;
             reveal.style.animation = '';
-            for (let i = 0; i < 12; i++) {
+            // 실제 조합 수량과 동일하게 파편 오브제 5개만 모입니다.
+            const chosen = Array.from({length:18}, (_,i)=>i+1).sort(()=>Math.random()-.5).slice(0,5);
+            chosen.forEach((n, i) => {
                 const shard = document.createElement('img');
-                const n = ((i * 7 + Math.floor(Math.random() * 18)) % 18) + 1;
                 shard.className = 'assembly-fragment';
                 shard.src = `assets/film/film_fragment_${String(n).padStart(2, '0')}.png`;
                 shard.style.setProperty('--sx', `${8 + Math.random() * 78}%`);
@@ -652,7 +829,7 @@
                 shard.style.setProperty('--delay', `${Math.random() * 0.35}s`);
                 shard.style.setProperty('--rot', `${Math.round(Math.random() * 150 - 75)}deg`);
                 layer.appendChild(shard);
-            }
+            });
             overlay.style.display = 'flex';
             window.setTimeout(() => {
                 overlay.style.display = 'none';
@@ -662,12 +839,21 @@
         }
 
         function startMission() {
-            if (userFilms < 10) {
-                alert("크리스털 필름 파편이 부족합니다! (필요: 10개)");
+            if (!activeCapsule) {
+                alert("먼저 타임캡슐 발견 지점에 도착해주세요.");
                 return;
             }
-            userFilms -= 10;
-            document.getElementById('film-count').innerText = userFilms;
+            if (getAlbum().some(item => item.id === activeCapsule.id)) {
+                alert("이미 수집한 타임캡슐입니다.");
+                closeModal('discovery-modal');
+                return;
+            }
+            if (completedFilms < 10) {
+                alert(`완성된 크리스털 필름이 부족합니다. (현재 ${completedFilms}개 / 필요 10개)`);
+                return;
+            }
+            completedFilms -= 10;
+            updateResourceDisplay();
             saveUserData();
 
             currentMissionCapsule = activeCapsule;
@@ -724,6 +910,8 @@
             }
 
             closeModal('mission-modal');
+            currentMissionCapsule = null;
+            activeCapsule = null;
         }
 
         function openAdminModal() {
@@ -907,6 +1095,8 @@
         }
 
         function openAlbum() {
+            document.getElementById('album-fragment-count').innerText = userFragments;
+            document.getElementById('album-completed-count').innerText = completedFilms;
             let album = getAlbum();
             let count = album.length;
 
