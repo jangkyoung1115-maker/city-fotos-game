@@ -312,7 +312,7 @@
     </style>
 </head>
 <body>
-    <div id="film-data-diagnostic" style="display:none;position:fixed;z-index:99999;left:10px;bottom:12px;max-width:calc(100vw - 20px);padding:10px 13px;border-radius:10px;background:rgba(8,18,38,.94);color:#fff;font:12px/1.5 sans-serif;box-shadow:0 3px 14px #0005"></div>
+    <div id="film-data-diagnostic" style="display:none;position:fixed;z-index:2147483647;left:12px;top:88px;max-width:calc(100vw - 24px);padding:12px 15px;border:2px solid #55dcff;border-radius:12px;background:rgba(5,15,35,.97);color:#fff;font: bold 13px/1.65 sans-serif;box-shadow:0 4px 20px #0008;pointer-events:none;white-space:pre-line"></div>
 
     <!-- 테스트 모드: URL에 ?test=true 를 붙였을 때만 표시됩니다. 자원/도감/Firebase 데이터는 변경하지 않습니다. -->
     <div id="visual-test-panel" aria-label="시각 효과 테스트">
@@ -1057,8 +1057,11 @@
             const box = document.getElementById('film-data-diagnostic');
             if (box) {
                 box.style.display = 'block';
-                box.textContent = message;
+                box.textContent = '필름 조각 진단\n' + message;
             }
+        }
+        if (filmDebugMode) {
+            showFilmDiagnostic('진단 화면 실행됨 · Firestore 응답 대기 중...');
         }
 
         function initRealtimeData() {
@@ -1269,7 +1272,8 @@
             syncFilm3DModels();
             if (filmDebugMode) {
                 const validCount = Object.keys(filmMarkers).length;
-                showFilmDiagnostic(`Firestore 필름 ${cachedFilms.length}개 · 지도 마커 ${validCount}개 표시 요청`);
+                const capsuleCount = Object.keys(capsuleMarkers).length;
+                showFilmDiagnostic(`Firestore 필름 ${cachedFilms.length}개\n필름 마커 생성 ${validCount}개\n타임캡슐 마커 생성 ${capsuleCount}개`);
             }
         }
 
@@ -1350,9 +1354,9 @@
                                 document.getElementById('discovery-modal').style.display = 'block';
                             }
                         } else if (minDistance <= 100) {
-                            banner.innerText = `✨ 근처에 타임캡슐(${nearestCapsule.title})이 있습니다! (${Math.round(minDistance)}m)`;
+                            banner.innerText = `✨ 내 위치에서 타임캡슐(${nearestCapsule.title})까지 ${Math.round(minDistance)}m · 캡슐 표시는 지도 좌표에 고정`;
                         } else {
-                            banner.innerText = `가장 가까운 타임캡슐까지 거리: 약 ${Math.round(minDistance)}m`;
+                            banner.innerText = `내 위치에서 가장 가까운 타임캡슐까지 약 ${Math.round(minDistance)}m · 지도 마커는 고정 좌표`;
                         }
                     }
                 },
@@ -1364,18 +1368,45 @@
             );
         }
 
-        map.on('click', function(e) {
+        map.on('click', async function(e) {
+            // MapLibre 원본은 e.lngLat, Leaflet 호환 이벤트는 e.latlng를 사용합니다.
+            // 두 형식을 모두 받아 관리자 배치가 지도 엔진 변경에 영향받지 않게 합니다.
+            const clickLat = Number(e?.lngLat?.lat ?? e?.latlng?.lat);
+            const clickLon = Number(e?.lngLat?.lng ?? e?.latlng?.lng);
+
             if (isBulkFilmMode) {
-                db.collection("admin_films").add({
-                    lat: e.latlng.lat,
-                    lon: e.latlng.lng
-                });
+                if (!isAdminMode) {
+                    isBulkFilmMode = false;
+                    alert('관리자 모드에서만 필름을 배치할 수 있습니다.');
+                    return;
+                }
+                if (!Number.isFinite(clickLat) || !Number.isFinite(clickLon)) {
+                    alert('지도 클릭 좌표를 읽지 못했습니다. 지도를 한 번 더 클릭해 주세요.');
+                    return;
+                }
+                try {
+                    const saved = await db.collection("admin_films").add({
+                        lat: clickLat,
+                        lon: clickLon,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.info('관리자 필름 배치 완료:', saved.id, clickLat, clickLon);
+                    document.getElementById('guide-banner').innerText =
+                        `필름 조각을 배치했습니다 · 위도 ${clickLat.toFixed(5)}, 경도 ${clickLon.toFixed(5)}`;
+                } catch (error) {
+                    console.error('관리자 필름 저장 실패:', error);
+                    alert('필름 조각을 저장하지 못했습니다. Firestore 권한 또는 연결을 확인해 주세요.\n' + (error.message || error));
+                }
                 return;
             }
 
             if (isPickingMode) {
-                pickedLat = e.latlng.lat;
-                pickedLon = e.latlng.lng;
+                if (!Number.isFinite(clickLat) || !Number.isFinite(clickLon)) {
+                    alert('지도 클릭 좌표를 읽지 못했습니다. 다시 선택해 주세요.');
+                    return;
+                }
+                pickedLat = clickLat;
+                pickedLon = clickLon;
 
                 if (tempPickMarker) {
                     map.removeLayer(tempPickMarker);
@@ -1407,15 +1438,21 @@
         }
 
         function toggleBulkFilmMode() {
+            if (!isAdminMode) {
+                alert('관리자 모드에서만 필름을 배치할 수 있습니다.');
+                return;
+            }
             isBulkFilmMode = !isBulkFilmMode;
             let btn = document.getElementById('admin-bulk-btn');
             if (isBulkFilmMode) {
                 btn.innerText = "필름 연속 배치: ON ✨";
                 btn.className = "action-btn bulk-btn active";
-                alert("✨ 필름 연속 배치 모드가 켜졌습니다! 이제 지도를 클릭하는 곳마다 미니 필름이 바로 생성됩니다.");
+                map.getCanvas().style.cursor = "crosshair";
+                alert("✨ 필름 연속 배치 모드가 켜졌습니다! 이제 지도를 클릭하는 곳마다 필름이 저장됩니다.");
             } else {
                 btn.innerText = "필름 연속 배치: OFF";
                 btn.className = "action-btn bulk-btn";
+                map.getCanvas().style.cursor = "";
                 alert("필름 연속 배치 모드가 꺼졌습니다.");
             }
         }
