@@ -312,7 +312,7 @@
     </style>
 </head>
 <body>
-
+    <div id="film-data-diagnostic" style="display:none;position:fixed;z-index:99999;left:10px;bottom:12px;max-width:calc(100vw - 20px);padding:10px 13px;border-radius:10px;background:rgba(8,18,38,.94);color:#fff;font:12px/1.5 sans-serif;box-shadow:0 3px 14px #0005"></div>
 
     <!-- 테스트 모드: URL에 ?test=true 를 붙였을 때만 표시됩니다. 자원/도감/Firebase 데이터는 변경하지 않습니다. -->
     <div id="visual-test-panel" aria-label="시각 효과 테스트">
@@ -1050,6 +1050,17 @@
             if (newlyCompleted > 0) enqueueFilmAssembly(newlyCompleted);
         }
 
+        const filmDebugMode = new URLSearchParams(window.location.search).get('debug') === 'films';
+        function showFilmDiagnostic(message) {
+            console.info('[필름 데이터 진단]', message);
+            if (!filmDebugMode) return;
+            const box = document.getElementById('film-data-diagnostic');
+            if (box) {
+                box.style.display = 'block';
+                box.textContent = message;
+            }
+        }
+
         function initRealtimeData() {
             db.collection("capsules").onSnapshot((snapshot) => {
                 cachedCapsules = [];
@@ -1078,13 +1089,26 @@
 
             db.collection("admin_films").onSnapshot((snapshot) => {
                 cachedFilms = [];
+                let validFilmCount = 0;
                 snapshot.forEach((doc) => {
                     let data = doc.data();
                     data.id = doc.id;
+                    // 이전 등록 방식의 좌표 필드명도 읽기만 하여 호환합니다.
+                    const lat = Number(data.lat ?? data.latitude);
+                    const lon = Number(data.lon ?? data.lng ?? data.longitude);
+                    if (Number.isFinite(lat) && Number.isFinite(lon) &&
+                        lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+                        data.lat = lat;
+                        data.lon = lon;
+                        validFilmCount++;
+                    }
                     cachedFilms.push(data);
                 });
-                console.info(`Firestore admin_films: ${cachedFilms.length}개 로드`);
+                showFilmDiagnostic(`Firestore admin_films: 전체 ${cachedFilms.length}개 · 좌표 정상 ${validFilmCount}개 · 지도 마커 렌더링 요청`);
                 renderAllMarkers();
+            }, (error) => {
+                console.error('admin_films 읽기 오류:', error);
+                showFilmDiagnostic(`필름 데이터 읽기 오류: ${error.code || ''} ${error.message || error}`);
             });
         }
 
@@ -1200,8 +1224,8 @@
 
             // 2. 필름 조각 렌더링
             cachedFilms.forEach(film => {
-                const filmLat = Number(film.lat);
-                const filmLon = Number(film.lon);
+                const filmLat = Number(film.lat ?? film.latitude);
+                const filmLon = Number(film.lon ?? film.lng ?? film.longitude);
                 if (!Number.isFinite(filmLat) || !Number.isFinite(filmLon) ||
                     filmLat < -90 || filmLat > 90 || filmLon < -180 || filmLon > 180) {
                     console.warn('좌표가 올바르지 않아 필름 마커를 건너뜁니다:', film.id, film.lat, film.lon);
@@ -1243,6 +1267,10 @@
                 markersGroup.addLayer(marker);
             });
             syncFilm3DModels();
+            if (filmDebugMode) {
+                const validCount = Object.keys(filmMarkers).length;
+                showFilmDiagnostic(`Firestore 필름 ${cachedFilms.length}개 · 지도 마커 ${validCount}개 표시 요청`);
+            }
         }
 
         let lastLat = null;
