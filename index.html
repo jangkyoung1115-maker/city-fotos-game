@@ -870,68 +870,27 @@
 
         // 모든 필름 조각에 공통으로 사용하는 A안(다면체 결정체) 3D 스타일 오브젝트
         function crystalShardData() {
-            // 얇은 홀로그램 필름이 구겨진 형태: 면은 얇고, 접힌 선과 겹침으로만 입체감을 만듭니다.
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 110">
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 92">
               <defs>
-                <linearGradient id="foil" x1="0" y1="0" x2="1" y2="1">
-                  <stop stop-color="#e8ffff" stop-opacity=".96"/>
-                  <stop offset=".22" stop-color="#65dfff" stop-opacity=".78"/>
-                  <stop offset=".48" stop-color="#6877ff" stop-opacity=".9"/>
-                  <stop offset=".72" stop-color="#d58cff" stop-opacity=".84"/>
-                  <stop offset="1" stop-color="#fff0ff" stop-opacity=".96"/>
+                <linearGradient id="crystalBody" x1="0" y1="0" x2="1" y2="1">
+                  <stop stop-color="#f7ffff"/><stop offset=".22" stop-color="#55eaff"/>
+                  <stop offset=".52" stop-color="#526fff"/><stop offset=".78" stop-color="#bd72ff"/>
+                  <stop offset="1" stop-color="#fff0ff"/>
                 </linearGradient>
-                <linearGradient id="fold" x1="0" y1="0" x2="0.9" y2="1">
-                  <stop stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#9feaff" stop-opacity=".2"/>
-                  <stop offset="1" stop-color="#342b91" stop-opacity=".78"/>
+                <linearGradient id="crystalSide" x1="0" y1="0" x2="0" y2="1">
+                  <stop stop-color="#9df7ff" stop-opacity=".92"/><stop offset="1" stop-color="#5735c5" stop-opacity=".95"/>
                 </linearGradient>
-                <filter id="foilGlow" x="-45%" y="-45%" width="190%" height="190%">
-                  <feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                <filter id="crystalGlow" x="-50%" y="-60%" width="200%" height="220%">
+                  <feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
               </defs>
-              <path d="M12 63 L28 22 L57 35 L76 9 L112 28 L139 56 L116 88 L82 77 L53 101 L24 83 Z"
-                    fill="url(#foil)" stroke="#eaffff" stroke-width="2.2" filter="url(#foilGlow)"/>
-              <path d="M12 63 L57 35 L53 101 L24 83 Z" fill="#48dfff" fill-opacity=".42" stroke="#fff" stroke-opacity=".8"/>
-              <path d="M57 35 L76 9 L87 51 L53 101 Z" fill="#9ba4ff" fill-opacity=".62" stroke="#fff" stroke-opacity=".9"/>
-              <path d="M76 9 L112 28 L87 51 Z" fill="#f3d4ff" fill-opacity=".7" stroke="#fff" stroke-opacity=".8"/>
-              <path d="M87 51 L112 28 L139 56 L116 88 Z" fill="#6c55d9" fill-opacity=".62" stroke="#eaffff" stroke-opacity=".9"/>
-              <path d="M53 101 L87 51 L116 88 L82 77 Z" fill="#3c4fb7" fill-opacity=".5" stroke="#fff" stroke-opacity=".65"/>
-              <path d="M19 61 L57 35 L76 9 M57 35 L87 51 L139 56 M53 101 L87 51 L116 88"
-                    fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" opacity=".9"/>
-              <path d="M27 25 Q45 40 57 35 T76 12" fill="none" stroke="#fff" stroke-width="3" opacity=".75"/>
-              <path d="M17 66 Q38 79 53 96" fill="none" stroke="#c8f8ff" stroke-width="2" opacity=".8"/>
-            </svg>`;
-            return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
-        }
-
-        function capsuleMarkerData(capsuleType = 'modern') {
-            const colors = capsuleType === 'ancient'
-                ? ['#d9c8a0','#927b62','#e8dfc7']
-                : capsuleType === 'old'
-                    ? ['#c8b7ff','#6f5da8','#e5d8ff']
-                    : capsuleType === 'mid-era'
-                        ? ['#8deaff','#477fc2','#d5faff']
-                        : ['#d7ffff','#438fc7','#c6aaff'];
-            const [light,mid,shine]=colors;
-            const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 120">
-              <defs>
-                <linearGradient id="can" x1="0" y1="0" x2="1" y2="0">
-                  <stop stop-color="${mid}"/><stop offset=".28" stop-color="${light}"/>
-                  <stop offset=".55" stop-color="#243d78"/><stop offset=".82" stop-color="${mid}"/>
-                  <stop offset="1" stop-color="${shine}"/>
-                </linearGradient>
-                <filter id="glow" x="-50%" y="-40%" width="200%" height="190%">
-                  <feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-              </defs>
-              <ellipse cx="45" cy="109" rx="25" ry="6" fill="#14244b" opacity=".28"/>
-              <rect x="18" y="18" width="54" height="84" rx="22" fill="url(#can)" stroke="${shine}" stroke-width="3" filter="url(#glow)"/>
-              <ellipse cx="45" cy="21" rx="27" ry="9" fill="${shine}" stroke="#fff" stroke-width="2"/>
-              <ellipse cx="45" cy="99" rx="27" ry="9" fill="${mid}" stroke="${shine}" stroke-width="2"/>
-              <rect x="25" y="39" width="40" height="43" rx="9" fill="#142b5b" fill-opacity=".78" stroke="#a9efff" stroke-width="2"/>
-              <path d="M30 48 H60 M30 72 H60" stroke="${shine}" stroke-width="2" opacity=".85"/>
-              <path d="M34 55 H56 V65 H34 Z" fill="#7edfff" fill-opacity=".55"/>
-              <circle cx="45" cy="60" r="7" fill="#f4ffff" fill-opacity=".9" filter="url(#glow)"/>
-              <path d="M45 6 V17 M45 103 V114" stroke="#fff" stroke-width="2" opacity=".8"/>
+              <path d="M10 53 L38 17 L105 7 L132 36 L105 73 L38 83 Z" fill="#142d83" opacity=".8" transform="translate(0 5)"/>
+              <path d="M10 49 L38 13 L105 3 L132 32 L105 69 L38 79 Z" fill="url(#crystalBody)" stroke="#eaffff" stroke-width="2.4" filter="url(#crystalGlow)"/>
+              <path d="M10 49 L38 13 L52 45 L38 79 Z" fill="#36e9ff" fill-opacity=".72" stroke="#eaffff" stroke-opacity=".7"/>
+              <path d="M38 13 L105 3 L78 43 L52 45 Z" fill="#8f9dff" fill-opacity=".68" stroke="#fff" stroke-opacity=".75"/>
+              <path d="M52 45 L78 43 L105 69 L38 79 Z" fill="#5336c8" fill-opacity=".65" stroke="#fff" stroke-opacity=".7"/>
+              <path d="M78 43 L105 3 L132 32 L105 69 Z" fill="#e28cff" fill-opacity=".58" stroke="#fff" stroke-opacity=".8"/>
+              <path d="M17 47 L39 17 L103 8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".95"/>
             </svg>`;
             return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
         }
