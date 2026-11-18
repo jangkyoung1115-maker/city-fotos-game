@@ -152,29 +152,24 @@
         }
 
         .crystal-film-marker { background: transparent !important; border: 0 !important; }
-        .film-marker-art { position:relative; width:58px; height:48px; overflow:visible; }
+        .film-marker-art { position:relative; width:58px; height:38px; overflow:visible; }
         .film-marker-art img {
-            position:absolute; left:50%; top:0; width:46px; height:28px;
+            position:absolute; left:50%; top:0; width:46px; height:30px;
             object-fit:contain; display:block; transform:translateX(-50%);
             filter:drop-shadow(0 0 5px rgba(82,220,255,.9)) drop-shadow(0 0 9px rgba(164,95,255,.5));
             animation:shard-hover 2.8s ease-in-out infinite;
         }
-        .film-marker-pin {
-            position:absolute; left:50%; top:25px; width:2px; height:15px;
-            transform:translateX(-50%);
-            background:linear-gradient(to bottom,rgba(224,250,255,.95),rgba(66,206,255,.65));
-            box-shadow:0 0 5px rgba(71,210,255,.9);
-        }
+        /* 연결선 없이, 오브젝트 바로 아래에 얇은 타원형 접지 그림자만 둡니다. */
         .film-marker-ground {
-            position:absolute; left:50%; bottom:0; width:34px; height:9px;
-            transform:translateX(-50%); border:1px solid rgba(77,218,255,.75);
+            position:absolute; left:50%; bottom:0; width:34px; height:7px;
+            transform:translateX(-50%); border:1px solid rgba(77,218,255,.78);
             border-radius:50%;
-            background:radial-gradient(ellipse,rgba(67,205,255,.34),rgba(47,104,220,.12) 58%,transparent 74%);
-            box-shadow:0 0 9px rgba(49,190,255,.48);
+            background:radial-gradient(ellipse,rgba(67,205,255,.32),rgba(47,104,220,.10) 58%,transparent 76%);
+            box-shadow:0 0 8px rgba(49,190,255,.42);
         }
         @keyframes shard-hover {
             0%,100% { transform:translate(-50%,0) rotate(-2deg); }
-            50% { transform:translate(-50%,-2px) rotate(2deg); }
+            50% { transform:translate(-50%,-1px) rotate(2deg); }
         }
         .flat-count-marker-wrap { background:transparent !important; border:0 !important; }
         .flat-count-marker {
@@ -504,8 +499,7 @@
 
         // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
 
-        // Gwangmyeong city boundary from a public GeoJSON administrative-boundary dataset.
-        // If the external file is unavailable, the game remains usable without this overlay.
+        // 광명시 경계 안쪽은 위성사진을 선명하게 유지하고, 바깥쪽은 반투명 안개 레이어로 흐리게 보이게 합니다.
         const GWANGMYEONG_BOUNDARY_URL =
             'https://raw.githubusercontent.com/KnellBalm/kr-admin-geojson/main/sig.geojson';
 
@@ -521,27 +515,57 @@
                            String(p.FULL_NM || '').includes('광명시');
                 });
                 if (!features.length) throw new Error('Gwangmyeong feature not found in GeoJSON.');
-                const boundaryData = { type: 'FeatureCollection', features };
 
-                L.geoJSON(boundaryData, {
+                // GeoJSON의 광명시 외곽선을 Leaflet 좌표 순서로 변환합니다.
+                const cityRings = [];
+                features.forEach(feature => {
+                    const geometry = feature.geometry || {};
+                    const polygons = geometry.type === 'Polygon'
+                        ? [geometry.coordinates]
+                        : geometry.type === 'MultiPolygon'
+                            ? geometry.coordinates
+                            : [];
+                    polygons.forEach(polygon => {
+                        if (polygon && polygon[0]) {
+                            cityRings.push(polygon[0].map(point => [point[1], point[0]]));
+                        }
+                    });
+                });
+                if (!cityRings.length) throw new Error('광명시 경계 좌표를 읽지 못했습니다.');
+
+                // 화면 바깥까지 덮는 큰 다각형에서 광명시 영역을 구멍으로 뚫어 바깥쪽만 흐리게 처리합니다.
+                const outsideMask = [
+                    [[-89.9, -179.9], [-89.9, 179.9], [89.9, 179.9], [89.9, -179.9]],
+                    ...cityRings
+                ];
+                L.polygon(outsideMask, {
+                    pane: 'overlayPane',
+                    interactive: false,
+                    stroke: false,
+                    fill: true,
+                    fillColor: '#dce7f2',
+                    fillOpacity: 0.48,
+                    smoothFactor: 0.5
+                }).addTo(map);
+
+                // 광명시 경계선만 선명하게 표시합니다. 내부에는 별도 색을 덮지 않습니다.
+                L.geoJSON({ type: 'FeatureCollection', features }, {
                     interactive: false,
                     style: {
-                        color: '#42dfff', weight: 12, opacity: 0.22,
-                        fillColor: '#071d3c', fillOpacity: 0.30,
-                        lineCap: 'round', lineJoin: 'round'
+                        color: '#42dfff', weight: 10, opacity: 0.20,
+                        fill: false, lineCap: 'round', lineJoin: 'round'
                     }
                 }).addTo(map);
 
-                L.geoJSON(boundaryData, {
+                L.geoJSON({ type: 'FeatureCollection', features }, {
                     interactive: false,
                     style: {
-                        color: '#57dfff', weight: 3.5, opacity: 0.96,
-                        fillColor: '#071d3c', fillOpacity: 0.30,
-                        lineCap: 'round', lineJoin: 'round'
+                        color: '#57dfff', weight: 3.5, opacity: 0.98,
+                        fill: false, lineCap: 'round', lineJoin: 'round'
                     }
                 }).addTo(map);
             })
-            .catch(error => console.warn('광명시 경계 레이어 표시 실패:', error));
+            .catch(error => console.warn('광명시 경계/외부 흐림 레이어 표시 실패:', error));
 
         // Inline SVG fallback keeps missing crystal PNGs from appearing as broken-image icons.
         function crystalFallbackData(kind = 'film') {
@@ -768,12 +792,12 @@
         function getFilmMarkerIcon(shardImage, zoomLevel) {
             const scale = Math.max(0.78, Math.min(1.45, Math.pow(1.10, zoomLevel - 14)));
             const width = Math.round(58 * scale);
-            const height = Math.round(48 * scale);
+            const height = Math.round(38 * scale);
             return L.divIcon({
                 className: 'crystal-film-marker',
                 html: `<div class="film-marker-art" style="width:${width}px;height:${height}px">
                     <img src="${shardImage}" alt="크리스털 필름 파편" onerror="this.onerror=null;this.src=crystalFallbackData('film');this.classList.add('crystal-fallback')">
-                    <span class="film-marker-pin"></span><span class="film-marker-ground"></span>
+                    <span class="film-marker-ground"></span>
                 </div>`,
                 iconSize: [width, height],
                 iconAnchor: [width / 2, height]
@@ -918,6 +942,16 @@
                     }
 
                     userMarker.setLatLng([currentLat, currentLon]);
+
+                    // 일반 플레이에서는 GPS 커서를 따라 지도가 부드럽게 이동합니다.
+                    // 테스트 모드에서는 지도 시점을 고정해 애니메이션 미리보기를 방해하지 않습니다.
+                    if (!visualTestMode) {
+                        const gpsPoint = L.latLng(currentLat, currentLon);
+                        const mapCenter = map.getCenter();
+                        if (map.distance(mapCenter, gpsPoint) > 8) {
+                            map.panTo(gpsPoint, { animate: true, duration: 0.45 });
+                        }
+                    }
 
                     let capsules = getCapsules();
                     let album = getAlbum();
