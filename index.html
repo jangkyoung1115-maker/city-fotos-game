@@ -150,11 +150,11 @@
         }
 
         .crystal-film-marker { background: transparent !important; border: 0 !important; }
-        .crystal-film-marker .film-marker-art img { opacity:0 !important; }
+        /* 필름 조각 이미지를 숨기지 않고 정상 표시합니다. */
         .film-marker-art { position:relative; width:58px; height:38px; overflow:visible; }
         .film-marker-art img {
             position:absolute; left:50%; top:0; width:46px; height:30px;
-            object-fit:contain; display:block; transform:translateX(-50%);
+            object-fit:contain; display:block; opacity:1 !important; visibility:visible; z-index:2; transform:translateX(-50%);
             filter:drop-shadow(0 0 5px rgba(82,220,255,.9)) drop-shadow(0 0 9px rgba(164,95,255,.5));
             animation:shard-hover 2.8s ease-in-out infinite;
         }
