@@ -312,6 +312,8 @@
     </style>
 </head>
 <body>
+
+    <div id="film-placement-status" style="display:none;position:fixed;z-index:2147483647;left:12px;right:12px;top:76px;padding:12px 14px;border:2px solid #55dcff;border-radius:12px;background:rgba(5,15,35,.97);color:#fff;font: bold 13px/1.5 sans-serif;box-shadow:0 4px 20px #0008;pointer-events:none;white-space:pre-line"></div>
     <div id="film-data-diagnostic" style="display:none;position:fixed;z-index:2147483647;left:12px;top:88px;max-width:calc(100vw - 24px);padding:12px 15px;border:2px solid #55dcff;border-radius:12px;background:rgba(5,15,35,.97);color:#fff;font: bold 13px/1.65 sans-serif;box-shadow:0 4px 20px #0008;pointer-events:none;white-space:pre-line"></div>
 
     <!-- 테스트 모드: URL에 ?test=true 를 붙였을 때만 표시됩니다. 자원/도감/Firebase 데이터는 변경하지 않습니다. -->
@@ -330,6 +332,7 @@
         <button class="action-btn" onclick="openAlbum()">사진첩(도감)</button>
         <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">타임캡슐 등록</button>
         <button id="admin-bulk-btn" class="action-btn bulk-btn" onclick="toggleBulkFilmMode()">필름 연속 배치: OFF</button>
+        <button id="admin-reset-films-btn" class="action-btn" style="display:none;background:#8b2635;color:#fff;border:1px solid #ff9aa8" onclick="resetAllFilmData()">기존 필름 전체 초기화</button>
         <button id="admin-list-btn" class="action-btn list-btn" onclick="openAdminListModal()">캡슐 목록</button>
     </div>
 
@@ -498,6 +501,7 @@
                 isAdminMode = true;
                 document.getElementById('admin-mode-btn').style.display = 'inline-block';
                 document.getElementById('admin-bulk-btn').style.display = 'inline-block';
+                document.getElementById('admin-reset-films-btn').style.display = 'inline-block';
                 document.getElementById('admin-list-btn').style.display = 'inline-block';
             }
             loadUserData();
@@ -1368,22 +1372,36 @@
             );
         }
 
+        function showFilmPlacementStatus(message, isError = false) {
+            const box = document.getElementById('film-placement-status');
+            if (!box) return;
+            box.style.display = 'block';
+            box.style.borderColor = isError ? '#ff7777' : '#55dcff';
+            box.textContent = '필름 배치 진단 · ' + message;
+        }
+
         map.on('click', async function(e) {
+            // 지도 클릭이 실제 이벤트 핸들러까지 도달하는지부터 화면에 표시합니다.
+            if (isBulkFilmMode) {
+                showFilmPlacementStatus('지도 클릭 감지됨 · 좌표와 저장 상태 확인 중...');
+            }
             // MapLibre 원본은 e.lngLat, Leaflet 호환 이벤트는 e.latlng를 사용합니다.
-            // 두 형식을 모두 받아 관리자 배치가 지도 엔진 변경에 영향받지 않게 합니다.
             const clickLat = Number(e?.lngLat?.lat ?? e?.latlng?.lat);
             const clickLon = Number(e?.lngLat?.lng ?? e?.latlng?.lng);
 
             if (isBulkFilmMode) {
                 if (!isAdminMode) {
                     isBulkFilmMode = false;
-                    alert('관리자 모드에서만 필름을 배치할 수 있습니다.');
+                    showFilmPlacementStatus('관리자 권한 상태가 아닙니다. URL에 admin=true가 있는지 확인하세요.', true);
+                    alert('관리자 모드 상태를 확인할 수 없습니다. 관리자 주소로 다시 접속해 주세요.');
                     return;
                 }
                 if (!Number.isFinite(clickLat) || !Number.isFinite(clickLon)) {
-                    alert('지도 클릭 좌표를 읽지 못했습니다. 지도를 한 번 더 클릭해 주세요.');
+                    showFilmPlacementStatus('지도 클릭은 감지했지만 좌표를 읽지 못했습니다.', true);
+                    alert('지도 클릭 좌표를 읽지 못했습니다. 다시 클릭해 주세요.');
                     return;
                 }
+                showFilmPlacementStatus(`좌표 확인 완료 · ${clickLat.toFixed(6)}, ${clickLon.toFixed(6)} · Firestore 저장 중...`);
                 try {
                     const saved = await db.collection("admin_films").add({
                         lat: clickLat,
@@ -1391,11 +1409,15 @@
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     console.info('관리자 필름 배치 완료:', saved.id, clickLat, clickLon);
+                    cachedFilms.push({ id: saved.id, lat: clickLat, lon: clickLon });
+                    renderAllMarkers();
+                    showFilmPlacementStatus(`저장 성공 · 필름 1개 배치됨 · 문서 ID ${saved.id}`);
                     document.getElementById('guide-banner').innerText =
-                        `필름 조각을 배치했습니다 · 위도 ${clickLat.toFixed(5)}, 경도 ${clickLon.toFixed(5)}`;
+                        `필름 조각 저장 완료 · ${clickLat.toFixed(5)}, ${clickLon.toFixed(5)}`;
                 } catch (error) {
                     console.error('관리자 필름 저장 실패:', error);
-                    alert('필름 조각을 저장하지 못했습니다. Firestore 권한 또는 연결을 확인해 주세요.\n' + (error.message || error));
+                    showFilmPlacementStatus(`Firestore 저장 실패 · ${error.code || ''} ${error.message || error}`, true);
+                    alert('필름 조각을 저장하지 못했습니다. 오류: ' + (error.code || '') + ' ' + (error.message || error));
                 }
                 return;
             }
@@ -1437,6 +1459,81 @@
             alert("🗺️ 지도를 터치하여 타임캡슐을 배치할 장소를 선택해주세요!");
         }
 
+        async function resetAllFilmData() {
+            if (!isAdminMode) {
+                alert('관리자 모드에서만 실행할 수 있습니다.');
+                return;
+            }
+
+            const first = window.confirm(
+                '정말 기존 필름 조각 데이터를 모두 삭제할까요?\n\n' +
+                '삭제 대상: Firestore admin_films 컬렉션의 모든 문서\n' +
+                '유지 대상: 타임캡슐(capsules), 사진첩, 플레이어 보유 자원\n\n' +
+                '이 작업은 되돌릴 수 없습니다.'
+            );
+            if (!first) return;
+
+            const confirmation = window.prompt(
+                '삭제를 진행하려면 DELETE 를 정확히 입력하세요.\n다른 데이터는 삭제하지 않습니다.'
+            );
+            if (confirmation !== 'DELETE') {
+                alert('확인 문구가 일치하지 않아 삭제를 취소했습니다.');
+                return;
+            }
+
+            const status = document.getElementById('film-placement-status');
+            if (status) {
+                status.style.display = 'block';
+                status.style.borderColor = '#ff7777';
+                status.textContent = '필름 데이터 초기화 · Firestore 문서 확인 중...';
+            }
+
+            try {
+                isBulkFilmMode = false;
+                const bulkBtn = document.getElementById('admin-bulk-btn');
+                if (bulkBtn) {
+                    bulkBtn.innerText = '필름 연속 배치: OFF';
+                    bulkBtn.className = 'action-btn bulk-btn';
+                }
+                if (map && map.getCanvas) map.getCanvas().style.cursor = '';
+
+                const snapshot = await db.collection('admin_films').get();
+                const docs = snapshot.docs;
+                let deleted = 0;
+
+                // Firestore batch는 최대 500개 작업이므로 나누어 삭제합니다.
+                for (let i = 0; i < docs.length; i += 450) {
+                    const batch = db.batch();
+                    docs.slice(i, i + 450).forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    deleted += Math.min(450, docs.length - i);
+                    if (status) status.textContent =
+                        `필름 데이터 초기화 · ${deleted}/${docs.length}개 삭제 완료`;
+                }
+
+                cachedFilms = [];
+                renderAllMarkers();
+
+                if (status) {
+                    status.style.display = 'block';
+                    status.style.borderColor = '#65e6a3';
+                    status.textContent =
+                        `초기화 완료 · 기존 필름 ${deleted}개 삭제됨\n이제 '필름 연속 배치: ON'을 눌러 새 필름을 심을 수 있습니다.`;
+                }
+                alert(`기존 필름 데이터 초기화가 완료되었습니다.\n삭제된 필름: ${deleted}개\n이제 새 필름을 배치할 수 있습니다.`);
+            } catch (error) {
+                console.error('필름 데이터 초기화 실패:', error);
+                if (status) {
+                    status.style.display = 'block';
+                    status.style.borderColor = '#ff7777';
+                    status.textContent = `초기화 실패 · ${error.code || ''} ${error.message || error}`;
+                }
+                alert('필름 데이터를 삭제하지 못했습니다.\n' +
+                    (error.code || '') + ' ' + (error.message || error) +
+                    '\nFirestore 삭제 권한을 확인해 주세요.');
+            }
+        }
+
         function toggleBulkFilmMode() {
             if (!isAdminMode) {
                 alert('관리자 모드에서만 필름을 배치할 수 있습니다.');
@@ -1448,7 +1545,8 @@
                 btn.innerText = "필름 연속 배치: ON ✨";
                 btn.className = "action-btn bulk-btn active";
                 map.getCanvas().style.cursor = "crosshair";
-                alert("✨ 필름 연속 배치 모드가 켜졌습니다! 이제 지도를 클릭하는 곳마다 필름이 저장됩니다.");
+                showFilmPlacementStatus('배치 모드 ON · 지도의 빈 곳을 한 번 클릭해 주세요.');
+                alert("✨ 필름 연속 배치 모드가 켜졌습니다! 지도의 빈 곳을 클릭해 주세요.");
             } else {
                 btn.innerText = "필름 연속 배치: OFF";
                 btn.className = "action-btn bulk-btn";
