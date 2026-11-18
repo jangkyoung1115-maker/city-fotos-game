@@ -19,6 +19,36 @@
         #map { width: 100%; height: 100vh; }
         
         /* 상단 UI 패널 */
+        #visual-test-panel {
+            display:none; position:absolute; z-index:1500; top:16px; left:16px;
+            width:220px; padding:12px; border-radius:14px;
+            color:#edf8ff; background:rgba(5,20,43,.92);
+            border:1px solid rgba(83,213,255,.65);
+            box-shadow:0 8px 26px rgba(0,0,0,.32);
+            backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+            box-sizing:border-box;
+        }
+        #visual-test-panel .visual-test-title {
+            font-size:12px; font-weight:800; margin-bottom:8px;
+            display:flex; justify-content:space-between; align-items:center;
+        }
+        #visual-test-panel .visual-test-title span {
+            color:#83eaff; font-size:9px; letter-spacing:1px;
+        }
+        #visual-test-panel button {
+            display:block; width:100%; margin:6px 0; padding:9px 8px;
+            border:1px solid rgba(100,208,255,.55); border-radius:9px;
+            background:linear-gradient(135deg,#173f70,#37347c);
+            color:#fff; font-size:11px; font-weight:700; cursor:pointer;
+        }
+        #visual-test-panel button:hover { filter:brightness(1.18); }
+        #visual-test-panel .visual-test-note {
+            margin-top:7px; color:#a9c6dc; font-size:9px; line-height:1.4;
+        }
+        @media (max-width:600px) {
+            #visual-test-panel { top:10px; left:10px; width:190px; padding:9px; }
+            #visual-test-panel button { font-size:10px; padding:8px 6px; }
+        }
         .top-panel {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.95); padding: 10px 18px; border-radius: 22px;
@@ -99,16 +129,26 @@
             background: transparent !important;
             border: 0 !important;
         }
-        .crystal-capsule-marker img {
-            width: 48px;
-            height: 68px;
-            object-fit: contain;
-            display: block;
-            filter: drop-shadow(0 4px 7px rgba(16, 55, 110, 0.28));
-            transform-origin: 50% 85%;
+        .capsule-marker-art {
+            position:relative; width:56px; height:76px; overflow:visible;
         }
-        .crystal-capsule-marker.is-collected img {
-            filter: drop-shadow(0 0 8px rgba(255, 220, 120, 0.95)) saturate(1.18);
+        .capsule-marker-art img {
+            position:absolute; left:4px; top:0;
+            width:48px; height:68px; object-fit:contain; display:block;
+            transform:translateY(3px);
+            filter:drop-shadow(0 2px 3px rgba(16,35,80,.28));
+            transform-origin:50% 92%;
+        }
+        .capsule-marker-ground {
+            position:absolute; left:50%; bottom:1px; width:36px; height:9px;
+            transform:translateX(-50%);
+            border:1.5px solid rgba(92,220,255,.76);
+            border-radius:50%;
+            background:radial-gradient(ellipse,rgba(42,156,224,.22),rgba(7,24,55,.18) 58%,transparent 76%);
+            box-shadow:0 1px 5px rgba(32,174,255,.32);
+        }
+        .crystal-capsule-marker.is-collected .capsule-marker-art img {
+            filter:drop-shadow(0 0 7px rgba(255,220,120,.85)) saturate(1.18);
         }
 
         .crystal-film-marker { background: transparent !important; border: 0 !important; }
@@ -149,30 +189,75 @@
             color:#332000; border-color:rgba(255,246,194,.9);
             background:radial-gradient(circle at 35% 28%,#ffe78a,#f3bd32 72%,#d99812);
         }
-        #film-assembly-overlay {
+        #film-assembly-overlay, #time-capsule-opening {
             display:none; position:fixed; inset:0; z-index:12000;
-            background:radial-gradient(ellipse at center, rgba(34,67,120,.92), rgba(5,10,24,.98));
+            background:radial-gradient(ellipse at center,rgba(22,49,101,.94),rgba(3,8,22,.985));
             align-items:center; justify-content:center; flex-direction:column; overflow:hidden;
-            color:#fff; text-align:center;
+            color:#fff; text-align:center; perspective:1100px;
         }
-        #film-assembly-stage { position:relative; width:min(88vw,520px); height:300px; }
-        .assembly-fragment { position:absolute; width:76px; height:64px; object-fit:contain; left:var(--sx); top:var(--sy); opacity:0;
-            filter:drop-shadow(0 0 9px rgba(80,190,255,.9)); animation:fragment-gather 1.85s cubic-bezier(.2,.75,.25,1) var(--delay) forwards; }
-        @keyframes fragment-gather {
-            0% { left:var(--sx); top:var(--sy); opacity:0; transform:translate(-50%,-50%) rotate(var(--rot)) scale(.55); }
-            12% { opacity:1; }
-            72% { left:50%; top:50%; opacity:1; transform:translate(-50%,-50%) rotate(220deg) scale(.72); }
-            100% { left:50%; top:50%; opacity:0; transform:translate(-50%,-50%) rotate(360deg) scale(.12); }
+        #film-assembly-stage { position:relative; width:min(88vw,560px); height:320px; perspective:1000px; transform-style:preserve-3d; }
+        #assembly-energy-ring {
+            position:absolute; left:50%; top:55%; width:210px; height:58px; border:2px solid rgba(83,224,255,.8);
+            border-radius:50%; transform:translate(-50%,-50%) rotateX(68deg);
+            box-shadow:0 0 18px rgba(71,203,255,.75),inset 0 0 18px rgba(120,95,255,.5);
+            animation:energy-ring-pulse 2.8s ease-in-out infinite;
         }
-        #assembly-flash { position:absolute; left:50%; top:50%; width:30px; height:30px; border-radius:50%;
-            transform:translate(-50%,-50%); background:#fff; opacity:0; box-shadow:0 0 25px 18px #70dfff,0 0 80px 45px rgba(95,120,255,.7);
-            animation:assembly-flash 2.5s ease-out forwards; }
-        @keyframes assembly-flash { 0%,55% {opacity:0; transform:translate(-50%,-50%) scale(.2)} 68% {opacity:1; transform:translate(-50%,-50%) scale(1.2)} 100% {opacity:0; transform:translate(-50%,-50%) scale(5)} }
-        #completed-film-reveal { position:absolute; left:50%; top:50%; width:min(82vw,440px); max-height:220px; object-fit:contain;
-            opacity:0; transform:translate(-50%,-50%) scale(.55); filter:drop-shadow(0 0 18px rgba(70,190,255,.95));
-            animation:completed-film-appear 1.25s ease-out 1.75s forwards; }
-        @keyframes completed-film-appear { 0% {opacity:0; transform:translate(-50%,-50%) scale(.55) rotate(-8deg)} 65% {opacity:1; transform:translate(-50%,-50%) scale(1.08) rotate(2deg)} 100% {opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0)} }
-        #assembly-caption { margin-top:4px; font-size:15px; letter-spacing:.08em; text-shadow:0 0 12px #65cfff; }
+        @keyframes energy-ring-pulse { 0%,100%{opacity:.35;scale:.72} 50%{opacity:1;scale:1.18} }
+        .assembly-fragment {
+            position:absolute; width:112px; height:78px; object-fit:contain;
+            left:var(--sx); top:var(--sy); opacity:0;
+            filter:drop-shadow(0 0 8px rgba(80,210,255,.95)) drop-shadow(0 12px 8px rgba(0,0,0,.55));
+            transform-style:preserve-3d; backface-visibility:visible;
+            animation:fragment-gather-3d 2.35s cubic-bezier(.18,.72,.2,1) var(--delay) forwards;
+        }
+        @keyframes fragment-gather-3d {
+            0% {opacity:0;transform:translate(-50%,-50%) rotateX(28deg) rotateY(var(--rot)) rotateZ(-22deg) scale(.45)}
+            12% {opacity:1}
+            48% {opacity:1;transform:translate(-50%,-50%) translateZ(90px) rotateX(68deg) rotateY(190deg) rotateZ(150deg) scale(.92)}
+            78% {opacity:1;transform:translate(-50%,-50%) translateZ(24px) rotateX(10deg) rotateY(340deg) rotateZ(360deg) scale(.62)}
+            100% {opacity:0;transform:translate(-50%,-50%) translateZ(0) rotateX(0) rotateY(540deg) rotateZ(720deg) scale(.12)}
+        }
+        #assembly-flash { position:absolute; left:50%; top:55%; width:34px; height:34px; border-radius:50%;
+            transform:translate(-50%,-50%); background:#fff; opacity:0;
+            box-shadow:0 0 30px 22px #70dfff,0 0 100px 60px rgba(125,91,255,.8);
+            animation:assembly-flash 2.7s ease-out forwards; }
+        @keyframes assembly-flash { 0%,55%{opacity:0;transform:translate(-50%,-50%) scale(.2)} 68%{opacity:1;transform:translate(-50%,-50%) scale(1.2)} 100%{opacity:0;transform:translate(-50%,-50%) scale(5)} }
+        #completed-film-reveal {
+            position:absolute; left:50%; top:55%; width:min(84vw,470px); max-height:240px; object-fit:contain;
+            opacity:0; transform:translate(-50%,-50%) rotateX(24deg) rotateY(-18deg) scale(.5);
+            transform-style:preserve-3d; filter:drop-shadow(0 0 20px rgba(70,210,255,.95));
+            animation:completed-film-appear-3d 1.65s cubic-bezier(.2,.8,.2,1) 2.15s forwards;
+        }
+        @keyframes completed-film-appear-3d {
+            0%{opacity:0;transform:translate(-50%,-50%) rotateX(65deg) rotateY(-55deg) scale(.28)}
+            65%{opacity:1;transform:translate(-50%,-50%) rotateX(12deg) rotateY(12deg) scale(1.08)}
+            100%{opacity:1;transform:translate(-50%,-50%) rotateX(0) rotateY(0) scale(1)}
+        }
+        #assembly-caption,.capsule-opening-caption { margin-top:10px; padding:12px 20px; border:1px solid rgba(110,220,255,.45);
+            border-radius:999px; background:rgba(8,24,52,.75); font-size:15px; letter-spacing:.04em;
+            text-shadow:0 0 12px #65cfff; box-shadow:0 0 24px rgba(63,180,255,.18); }
+        #time-capsule-opening { gap:22px; }
+        .capsule-3d { position:relative; width:190px; height:270px; transform-style:preserve-3d;
+            animation:capsule-unlock 2.6s ease-in-out forwards; }
+        .capsule-glass { position:absolute; left:24px; top:62px; width:142px; height:150px; border:3px solid rgba(115,230,255,.9);
+            border-radius:48px 48px 34px 34px; background:linear-gradient(90deg,rgba(66,203,255,.12),rgba(255,255,255,.22),rgba(111,102,255,.12));
+            box-shadow:inset 0 0 22px rgba(89,220,255,.65),0 0 24px rgba(67,194,255,.55); transform:translateZ(18px); }
+        .capsule-top,.capsule-bottom { position:absolute; left:14px; width:162px; height:42px; border-radius:50%;
+            border:4px solid #9beeff; background:linear-gradient(135deg,#e6ffff,#348cc7 38%,#322d77 72%,#d7aaff);
+            box-shadow:0 0 18px rgba(74,207,255,.75),inset 0 0 12px rgba(255,255,255,.7); z-index:2; }
+        .capsule-top { top:42px; transform:translateZ(28px); animation:capsule-lid-open 2.6s ease-in-out forwards; }
+        .capsule-bottom { top:190px; }
+        .capsule-core { position:absolute; left:43px; top:43px; width:50px; height:50px; border-radius:50%;
+            background:radial-gradient(circle,#fff 0%,#ffe78b 18%,#ffb52e 48%,rgba(255,166,43,.1) 72%);
+            box-shadow:0 0 22px 12px rgba(255,190,70,.7),0 0 60px rgba(255,167,50,.7); animation:core-pulse .8s ease-in-out infinite alternate; }
+        .capsule-light { position:absolute; left:50%; top:50%; width:220px; height:70px; border:2px solid rgba(255,199,92,.8);
+            border-radius:50%; transform:translate(-50%,-50%) rotateX(70deg); box-shadow:0 0 24px rgba(255,177,65,.8); }
+        @keyframes capsule-unlock { 0%{transform:rotateY(-18deg) scale(.65)} 45%{transform:rotateY(18deg) scale(1.05)} 100%{transform:rotateY(0) scale(1)} }
+        @keyframes capsule-lid-open { 0%,48%{transform:translateZ(28px) translateY(0) rotateX(0)} 78%,100%{transform:translateZ(50px) translateY(-48px) rotateX(-35deg)} }
+        @keyframes core-pulse { to{transform:scale(1.18);filter:brightness(1.4)} }
+        @media (prefers-reduced-motion: reduce) {
+            .assembly-fragment,#completed-film-reveal,.capsule-3d,.capsule-top,.capsule-core { animation-duration:.01ms !important; animation-iteration-count:1 !important; }
+        }
 
         /* 위성지도 원본의 색과 도로·건물 디테일을 그대로 유지합니다. */
         body { background:#07172a; }
@@ -218,10 +303,19 @@
 </head>
 <body>
 
+
+    <!-- 테스트 모드: URL에 ?test=true 를 붙였을 때만 표시됩니다. 자원/도감/Firebase 데이터는 변경하지 않습니다. -->
+    <div id="visual-test-panel" aria-label="시각 효과 테스트">
+        <div class="visual-test-title">시각 효과 테스트 <span>TEST</span></div>
+        <button type="button" onclick="previewFilmConversion()">필름 변환 애니메이션</button>
+        <button type="button" onclick="previewCapsuleOpening()">타임캡슐 개방 애니메이션</button>
+        <div class="visual-test-note">미리보기 전용 · 실제 수집 수량은 바뀌지 않습니다.</div>
+    </div>
+
     <!-- 상단 상태바 -->
     <div class="top-panel">
         <span>✧ 파편 <span id="fragment-count" class="fragment-badge">0</span>/5</span>
-        <span>🎞 완성 필름 <span id="completed-film-count" class="completed-badge">15</span></span>
+        <span>🎞 완성 필름 <span id="completed-film-count" class="completed-badge">15</span>/10</span>
         <span>👣 <span id="step-count" class="step-badge">0</span></span>
         <button class="action-btn" onclick="openAlbum()">사진첩(도감)</button>
         <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">타임캡슐 등록</button>
@@ -249,11 +343,21 @@
     <!-- 필름 파편 조합 애니메이션 -->
     <div id="film-assembly-overlay" aria-live="polite">
         <div id="film-assembly-stage">
+            <div id="assembly-energy-ring"></div>
             <div id="assembly-fragments"></div>
             <div id="assembly-flash"></div>
-            <img id="completed-film-reveal" src="assets/film/completed_crystal_film.png" alt="완성된 크리스털 필름" onerror="this.onerror=null;this.src=crystalFallbackData('film');this.classList.add('crystal-fallback')">
+            <img id="completed-film-reveal" alt="완결된 홀로그램 필름">
         </div>
-        <div id="assembly-caption">흩어진 기억이 하나의 필름으로 이어집니다</div>
+        <div id="assembly-caption">다섯 결정체가 하나의 완결된 필름으로 변환됩니다</div>
+    </div>
+    <div id="time-capsule-opening" aria-live="polite">
+        <div class="capsule-3d">
+            <div class="capsule-top"></div>
+            <div class="capsule-glass"><div class="capsule-core"></div></div>
+            <div class="capsule-bottom"></div>
+            <div class="capsule-light"></div>
+        </div>
+        <div class="capsule-opening-caption">완결된 필름 10개가 모였습니다 · 타임캡슐 개방</div>
     </div>
 
     <!-- 2. 미니게임 (먼지 닦기) 팝업 -->
@@ -357,8 +461,23 @@
         let isAdminMode = false;
         let isBulkFilmMode = false;
 
+        const visualTestMode = new URLSearchParams(window.location.search).get('test') === 'true';
+
+        function previewFilmConversion() {
+            // 실제 자원 수량을 바꾸지 않고 변환 연출만 재생합니다.
+            playFilmAssembly(() => {});
+        }
+
+        function previewCapsuleOpening() {
+            // 실제 필름을 소비하거나 사진 미션을 열지 않는 시각 효과 미리보기입니다.
+            playTimeCapsuleOpening(() => {});
+        }
+
         window.addEventListener('DOMContentLoaded', (event) => {
             const urlParams = new URLSearchParams(window.location.search);
+            if (visualTestMode) {
+                document.getElementById('visual-test-panel').style.display = 'block';
+            }
             if (urlParams.get('admin') === 'true') {
                 isAdminMode = true;
                 document.getElementById('admin-mode-btn').style.display = 'inline-block';
@@ -445,6 +564,60 @@
             return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
         }
 
+        // 모든 필름 조각에 공통으로 사용하는 A안(다면체 결정체) 3D 스타일 오브젝트
+        function crystalShardData() {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 92">
+              <defs>
+                <linearGradient id="crystalBody" x1="0" y1="0" x2="1" y2="1">
+                  <stop stop-color="#f7ffff"/><stop offset=".22" stop-color="#55eaff"/>
+                  <stop offset=".52" stop-color="#526fff"/><stop offset=".78" stop-color="#bd72ff"/>
+                  <stop offset="1" stop-color="#fff0ff"/>
+                </linearGradient>
+                <linearGradient id="crystalSide" x1="0" y1="0" x2="0" y2="1">
+                  <stop stop-color="#9df7ff" stop-opacity=".92"/><stop offset="1" stop-color="#5735c5" stop-opacity=".95"/>
+                </linearGradient>
+                <filter id="crystalGlow" x="-50%" y="-60%" width="200%" height="220%">
+                  <feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <path d="M10 53 L38 17 L105 7 L132 36 L105 73 L38 83 Z" fill="#142d83" opacity=".8" transform="translate(0 5)"/>
+              <path d="M10 49 L38 13 L105 3 L132 32 L105 69 L38 79 Z" fill="url(#crystalBody)" stroke="#eaffff" stroke-width="2.4" filter="url(#crystalGlow)"/>
+              <path d="M10 49 L38 13 L52 45 L38 79 Z" fill="#36e9ff" fill-opacity=".72" stroke="#eaffff" stroke-opacity=".7"/>
+              <path d="M38 13 L105 3 L78 43 L52 45 Z" fill="#8f9dff" fill-opacity=".68" stroke="#fff" stroke-opacity=".75"/>
+              <path d="M52 45 L78 43 L105 69 L38 79 Z" fill="#5336c8" fill-opacity=".65" stroke="#fff" stroke-opacity=".7"/>
+              <path d="M78 43 L105 3 L132 32 L105 69 Z" fill="#e28cff" fill-opacity=".58" stroke="#fff" stroke-opacity=".8"/>
+              <path d="M17 47 L39 17 L103 8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".95"/>
+            </svg>`;
+            return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+        }
+
+        // 조각 5개가 결합한 완결 필름: 결정체의 색과 빛을 이어받은 입체 필름 리본
+        function completedFilmData() {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 190">
+              <defs>
+                <linearGradient id="filmFace" x1="0" y1="0" x2="1" y2="1">
+                  <stop stop-color="#bafaff"/><stop offset=".28" stop-color="#537cff"/>
+                  <stop offset=".62" stop-color="#9b58e9"/><stop offset="1" stop-color="#f6caff"/>
+                </linearGradient>
+                <linearGradient id="filmEdge" x1="0" y1="0" x2="0" y2="1">
+                  <stop stop-color="#f5ffff"/><stop offset=".45" stop-color="#67dfff"/>
+                  <stop offset="1" stop-color="#5b35bd"/>
+                </linearGradient>
+                <filter id="filmGlow" x="-30%" y="-40%" width="160%" height="190%">
+                  <feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <path d="M24 63 Q105 8 194 48 T416 45 L416 137 Q323 165 224 130 T24 155 Z" fill="#291c78" opacity=".9" transform="translate(0 8)"/>
+              <path d="M24 53 Q105 -2 194 38 T416 35 L416 127 Q323 155 224 120 T24 145 Z" fill="url(#filmFace)" stroke="#f0ffff" stroke-width="4" filter="url(#filmGlow)"/>
+              <path d="M24 53 Q105 -2 194 38 T416 35 L416 54 Q323 76 224 53 T24 72 Z" fill="url(#filmEdge)" stroke="#fff" stroke-width="2"/>
+              <path d="M24 126 Q105 73 194 103 T416 108 L416 127 Q323 155 224 120 T24 145 Z" fill="url(#filmEdge)" stroke="#fff" stroke-width="2"/>
+              <path d="M58 48 Q137 11 204 43 T382 43 L382 119 Q304 137 222 111 T58 130 Z" fill="#162d86" fill-opacity=".25" stroke="#e9ffff" stroke-opacity=".75" stroke-width="2"/>
+              ${[0,1,2,3,4,5,6,7].map(i=>`<rect x="${35+i*49}" y="${47+(i%2)*2}" width="18" height="9" rx="2" fill="#10224c" stroke="#e8ffff" stroke-width="1.5"/><rect x="${35+i*49}" y="${130-(i%2)*2}" width="18" height="9" rx="2" fill="#10224c" stroke="#e8ffff" stroke-width="1.5"/>`).join('')}
+              <path d="M35 70 Q125 15 214 55 T405 52" fill="none" stroke="#fff" stroke-width="2" opacity=".8"/>
+            </svg>`;
+            return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+        }
+
         var markersGroup = L.markerClusterGroup({
             spiderfyOnMaxZoom: true,
             showCoverageOnHover: false,
@@ -521,15 +694,16 @@
         }
 
         function collectFilmFragment(amount = 1) {
-            userFragments += amount;
+            userFragments += Math.max(0, Number(amount) || 0);
             const newlyCompleted = Math.floor(userFragments / 5);
             if (newlyCompleted > 0) {
                 userFragments %= 5;
                 completedFilms += newlyCompleted;
-                alert(`✨ 필름 파편 5개가 모여 완성 필름 ${newlyCompleted}개가 되었습니다!`);
             }
+            // 애니메이션 도중 창을 닫아도 획득한 자원이 사라지지 않도록 먼저 저장합니다.
             updateResourceDisplay();
             saveUserData();
+            if (newlyCompleted > 0) enqueueFilmAssembly(newlyCompleted);
         }
 
         function initRealtimeData() {
@@ -638,10 +812,13 @@
                 }.png`;
                 let crystalIcon = L.divIcon({
                     className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
-                    html: `<img src="${capsuleImage}" alt="크리스털 타임캡슐" onerror="this.onerror=null;this.src=crystalFallbackData('capsule');this.classList.add('crystal-fallback')">`,
-                    iconSize: [48, 68],
-                    iconAnchor: [24, 62],
-                    popupAnchor: [0, -58]
+                    html: `<div class="capsule-marker-art">
+                        <img src="${capsuleImage}" alt="크리스털 타임캡슐" onerror="this.onerror=null;this.src=crystalFallbackData('capsule');this.classList.add('crystal-fallback')">
+                        <span class="capsule-marker-ground"></span>
+                    </div>`,
+                    iconSize: [56, 76],
+                    iconAnchor: [28, 75],
+                    popupAnchor: [0, -66]
                 });
 
                 let marker = L.marker([cap.lat, cap.lon], {icon: crystalIcon});
@@ -657,8 +834,8 @@
                 let filmIdText = String(film.id || 'film');
                 let filmHash = 0;
                 for (let i = 0; i < filmIdText.length; i++) filmHash = (filmHash + filmIdText.charCodeAt(i) * (i + 1)) % 997;
-                let shardNumber = (filmHash % 18) + 1;
-                let shardImage = `assets/film/film_fragment_${String(shardNumber).padStart(2, '0')}.png`;
+                // 디자인 통일: 모든 위치에서 동일한 A안 결정체형 필름 조각을 사용합니다.
+                let shardImage = crystalShardData();
                 let miniFilmIcon = getFilmMarkerIcon(shardImage, map.getZoom());
                 let marker = L.marker([film.lat, film.lon], {icon: miniFilmIcon});
                 marker._filmShardImage = shardImage;
@@ -711,7 +888,9 @@
                         });
 
                         userMarker = L.marker([currentLat, currentLon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
-                        map.setView([currentLat, currentLon], 14);
+                        if (!visualTestMode) {
+                            map.setView([currentLat, currentLon], 14);
+                        }
 
                         renderAllMarkers();
 
@@ -835,33 +1014,66 @@
             }
         }
 
+        let filmAssemblyQueue = 0;
+        let filmAssemblyBusy = false;
+
+        function enqueueFilmAssembly(count = 1) {
+            filmAssemblyQueue += count;
+            runNextFilmAssembly();
+        }
+
+        function runNextFilmAssembly() {
+            if (filmAssemblyBusy || filmAssemblyQueue <= 0) return;
+            filmAssemblyBusy = true;
+            filmAssemblyQueue -= 1;
+            playFilmAssembly(() => {
+                filmAssemblyBusy = false;
+                runNextFilmAssembly();
+            });
+        }
+
         function playFilmAssembly(onComplete) {
             const overlay = document.getElementById('film-assembly-overlay');
             const layer = document.getElementById('assembly-fragments');
             const reveal = document.getElementById('completed-film-reveal');
+            const caption = document.getElementById('assembly-caption');
             layer.innerHTML = '';
-            reveal.style.animation = 'none';
-            reveal.offsetHeight;
-            reveal.style.animation = '';
-            // 실제 조합 수량과 동일하게 파편 오브제 5개만 모입니다.
-            const chosen = Array.from({length:18}, (_,i)=>i+1).sort(()=>Math.random()-.5).slice(0,5);
-            chosen.forEach((n, i) => {
+            reveal.src = completedFilmData();
+            overlay.classList.remove('is-capsule-mode');
+            caption.textContent = '다섯 결정체가 하나의 완결된 필름으로 변환됩니다';
+
+            const startPositions = [
+                ['16%','23%'], ['82%','23%'], ['18%','76%'], ['82%','76%'], ['50%','8%']
+            ];
+            startPositions.forEach((pos, i) => {
                 const shard = document.createElement('img');
                 shard.className = 'assembly-fragment';
-                shard.src = `assets/film/film_fragment_${String(n).padStart(2, '0')}.png`;
-                shard.onerror = function() { this.onerror = null; this.src = crystalFallbackData('film'); this.classList.add('crystal-fallback'); };
-                shard.style.setProperty('--sx', `${8 + Math.random() * 78}%`);
-                shard.style.setProperty('--sy', `${8 + Math.random() * 68}%`);
-                shard.style.setProperty('--delay', `${Math.random() * 0.35}s`);
-                shard.style.setProperty('--rot', `${Math.round(Math.random() * 150 - 75)}deg`);
+                shard.src = crystalShardData();
+                shard.alt = '결정체형 필름 조각';
+                shard.style.setProperty('--sx', pos[0]);
+                shard.style.setProperty('--sy', pos[1]);
+                shard.style.setProperty('--delay', `${i * 0.08}s`);
+                shard.style.setProperty('--rot', `${[-28,24,-18,32,0][i]}deg`);
                 layer.appendChild(shard);
             });
+
             overlay.style.display = 'flex';
+            overlay.setAttribute('aria-label', '필름 조각 5개가 완결된 필름으로 변환되는 장면');
             window.setTimeout(() => {
                 overlay.style.display = 'none';
                 layer.innerHTML = '';
                 if (typeof onComplete === 'function') onComplete();
-            }, 3400);
+            }, 3900);
+        }
+
+        function playTimeCapsuleOpening(onComplete) {
+            const overlay = document.getElementById('time-capsule-opening');
+            if (!overlay) { if (typeof onComplete === 'function') onComplete(); return; }
+            overlay.style.display = 'flex';
+            window.setTimeout(() => {
+                overlay.style.display = 'none';
+                if (typeof onComplete === 'function') onComplete();
+            }, 2800);
         }
 
         function startMission() {
@@ -885,7 +1097,7 @@
             currentMissionCapsule = activeCapsule;
             closeModal('discovery-modal');
 
-            playFilmAssembly(() => {
+            playTimeCapsuleOpening(() => {
                 document.getElementById('target-photo').src = currentMissionCapsule.url;
                 document.getElementById('target-photo').style.filter = 'blur(5px)';
                 document.getElementById('overlay-text').style.display = 'flex';
