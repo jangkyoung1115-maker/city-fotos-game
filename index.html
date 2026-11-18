@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>광명시 시간캡슐 - D+F+E 디자인 1차</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" />
     
-    <!-- Leaflet MarkerCluster CSS 추가 -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
     
     <!-- Firebase SDK 추가 -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -152,6 +150,7 @@
         }
 
         .crystal-film-marker { background: transparent !important; border: 0 !important; }
+        .crystal-film-marker .film-marker-art img { opacity:0 !important; }
         .film-marker-art { position:relative; width:58px; height:38px; overflow:visible; }
         .film-marker-art img {
             position:absolute; left:50%; top:0; width:46px; height:30px;
@@ -434,9 +433,8 @@
         <button class="btn btn-secondary" onclick="closeModal('admin-list-modal')" style="margin-top: 10px; padding: 10px;">닫기</button>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Leaflet MarkerCluster JS 추가 -->
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.152.2/three.min.js"></script>
     
     <script>
         const firebaseConfig = {
@@ -483,89 +481,326 @@
             initRealtimeData();
         });
 
-        var map = L.map('map').setView([37.4784, 126.8646], 14);
+        // MapLibre GL + Three.js: 3D 벡터 건물과 카메라에 동기화되는 필름 크리스털
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://tiles.openfreemap.org/styles/liberty',
+            center: [126.8646, 37.4784],
+            zoom: 16,
+            pitch: 48,
+            bearing: -18,
+            maxPitch: 60,
+            antialias: true
+        });
+        map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
 
-        // Esri World Imagery 위성지도: 별도 CARTO 키 입력 없이 사용합니다.
-        const tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-        const baseTiles = L.tileLayer(tileUrl, {
-            maxZoom: 19,
-            maxNativeZoom: 19,
-            attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-            crossOrigin: true
-        }).addTo(map);
-        map.on('tileerror', function(e) {
-            console.warn('지도 타일을 불러오지 못했습니다. 네트워크 또는 타일 제공자 상태를 확인하세요.', e);
+        // 기존 코드가 사용하는 Leaflet 일부 API를 MapLibre 기반으로 연결합니다.
+        const L = {
+            divIcon: options => options,
+            latLng: (lat, lng) => ({ lat, lng }),
+            marker: (latlng, options={}) => new CompatMarker(latlng, options),
+            markerClusterGroup: () => new CompatMarkerGroup(),
+            polygon: (latlngs, options={}) => new CompatGeoLayer('polygon', latlngs, options),
+            geoJSON: (geojson, options={}) => new CompatGeoLayer('geojson', geojson, options)
+        };
+
+        class CompatMarker {
+            constructor(latlng, options={}) {
+                this.latlng = latlng;
+                this.options = options;
+                this.handlers = {};
+                this.popupHTML = '';
+                this.element = document.createElement('div');
+                const icon = options.icon || {};
+                this.element.className = icon.className || 'maplibre-compat-marker';
+                this.element.innerHTML = icon.html || '';
+                const size = icon.iconSize || [32, 40];
+                const anchor = icon.iconAnchor || [size[0]/2, size[1]];
+                this.element.style.width = size[0] + 'px';
+                this.element.style.height = size[1] + 'px';
+                this.element.style.position = 'relative';
+                this.element.style.cursor = 'pointer';
+                this.marker = new maplibregl.Marker({
+                    element: this.element,
+                    anchor: 'center',
+                    offset: [size[0]/2-anchor[0], size[1]/2-anchor[1]]
+                })
+                    .setLngLat([latlng[1], latlng[0]]);
+                this.element.addEventListener('click', event => {
+                    event.stopPropagation();
+                    (this.handlers.click || []).forEach(fn => fn({ target: this }));
+                });
+            }
+            addTo(target) {
+                this.marker.addTo(target._map || target);
+                this._map = target._map || target;
+                return this;
+            }
+            bindPopup(html) {
+                this.popupHTML = html;
+                this.element.addEventListener('mouseenter', () => {
+                    if (this.popupHTML) {
+                        this.popup = new maplibregl.Popup({ offset: 18, closeButton: false })
+                            .setLngLat(this.marker.getLngLat()).setHTML(this.popupHTML).addTo(this._map);
+                    }
+                });
+                this.element.addEventListener('mouseleave', () => {
+                    if (this.popup) { this.popup.remove(); this.popup = null; }
+                });
+                return this;
+            }
+            on(name, fn) {
+                if (!this.handlers[name]) this.handlers[name] = [];
+                this.handlers[name].push(fn);
+                return this;
+            }
+            setLatLng(latlng) {
+                this.latlng = latlng;
+                this.marker.setLngLat([latlng[1], latlng[0]]);
+                return this;
+            }
+            setIcon(icon) {
+                this.element.className = icon.className || '';
+                this.element.innerHTML = icon.html || '';
+                const size = icon.iconSize || [32,40];
+                const anchor = icon.iconAnchor || [size[0]/2,size[1]];
+                this.element.style.width = size[0] + 'px';
+                this.element.style.height = size[1] + 'px';
+                this.marker.setOffset([size[0]/2-anchor[0], size[1]/2-anchor[1]]);
+                return this;
+            }
+            remove() {
+                if (this.popup) this.popup.remove();
+                this.marker.remove();
+                return this;
+            }
+        }
+
+        class CompatMarkerGroup {
+            constructor() { this.items = []; this._map = null; }
+            addLayer(marker) {
+                this.items.push(marker);
+                if (this._map) marker.addTo(this._map);
+                return this;
+            }
+            clearLayers() {
+                this.items.forEach(marker => marker.remove());
+                this.items = [];
+                return this;
+            }
+            addTo(target) {
+                this._map = target._map || target;
+                this.items.forEach(marker => marker.addTo(this._map));
+                return this;
+            }
+        }
+
+        let compatLayerCounter = 0;
+        class CompatGeoLayer {
+            constructor(kind, data, options={}) {
+                this.kind = kind; this.data = data; this.options = options;
+                this.id = 'compat-layer-' + (++compatLayerCounter);
+            }
+            addTo(target) {
+                const m = target._map || target;
+                const toGeo = coords => coords.map(pair => [pair[1], pair[0]]);
+                let geojson;
+                if (this.kind === 'polygon') {
+                    const rings = this.data.map(toGeo);
+                    geojson = { type:'Feature', properties:{}, geometry:{type:'Polygon',coordinates:rings} };
+                } else geojson = this.data;
+                const sourceId = this.id + '-source';
+                m.addSource(sourceId, { type:'geojson', data:geojson });
+                const style = this.options.style || {};
+                if (this.kind === 'polygon') {
+                    m.addLayer({ id:this.id+'-fill', type:'fill', source:sourceId,
+                        paint:{'fill-color':style.fillColor || '#dce7f2','fill-opacity':style.fillOpacity ?? 0.48},
+                        layout:{visibility:'visible'} });
+                    if (style.stroke !== false) m.addLayer({id:this.id+'-line',type:'line',source:sourceId,
+                        paint:{'line-color':style.color || '#42dfff','line-width':style.weight || 2,'line-opacity':style.opacity ?? 1}});
+                } else {
+                    if (style.fill !== false) m.addLayer({id:this.id+'-fill',type:'fill',source:sourceId,
+                        paint:{'fill-color':style.fillColor || '#dce7f2','fill-opacity':style.fillOpacity ?? 0.25}});
+                    m.addLayer({id:this.id+'-line',type:'line',source:sourceId,
+                        paint:{'line-color':style.color || '#42dfff','line-width':style.weight || 2,'line-opacity':style.opacity ?? 1}});
+                }
+                return this;
+            }
+        }
+
+        // 기존 앱 코드와 비슷한 지도 인터페이스
+        const mapCompat = {
+            on(name, fn) {
+                if (name === 'tileerror') return this;
+                map.on(name, event => {
+                    if (name === 'click') {
+                        event.latlng = { lat:event.lngLat.lat, lng:event.lngLat.lng };
+                    }
+                    fn(event);
+                });
+                return this;
+            },
+            getZoom: () => map.getZoom(),
+            getCenter: () => { const c=map.getCenter(); return {lat:c.lat,lng:c.lng}; },
+            setView: (latlng, zoom) => { map.jumpTo({center:[latlng[1],latlng[0]],zoom}); return mapCompat; },
+            panTo: (latlng, opts={}) => { map.easeTo({center:[latlng.lng,latlng.lat],duration:opts.duration ? opts.duration*1000 : 450}); return mapCompat; },
+            distance: (a,b) => {
+                const R=6371000, rad=x=>x*Math.PI/180;
+                const dLat=rad(b.lat-a.lat), dLon=rad(b.lng-a.lng);
+                const q=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
+                return 2*R*Math.asin(Math.sqrt(q));
+            },
+            addLayer: group => group.addTo(map),
+            removeLayer: layer => { if(layer && layer.remove) layer.remove(); }
+        };
+        // 변수명 map은 기존 로직 전체에서 사용되므로 MapLibre 객체에 필요한 호환 메서드를 연결합니다.
+        map.on = map.on.bind(map);
+        map.getCenter = map.getCenter.bind(map);
+        map.getZoom = map.getZoom.bind(map);
+        map.setView = mapCompat.setView;
+        map.panTo = mapCompat.panTo;
+        map.distance = mapCompat.distance;
+        const nativeRemoveLayer = map.removeLayer.bind(map);
+        map.removeLayer = function(layer) {
+            if (layer && typeof layer.remove === 'function') layer.remove();
+            else if (typeof layer === 'string') nativeRemoveLayer(layer);
+            return this;
+        };
+        const originalMapOn = map.on.bind(map);
+        map.on = function(name, fn) {
+            if (name === 'tileerror') return this;
+            return originalMapOn(name, event => {
+                if (name === 'click') event.latlng = {lat:event.lngLat.lat,lng:event.lngLat.lng};
+                fn(event);
+            });
+        };
+        // 광명시 경계와 도시 외부의 흐림 마스크
+        const GWANGMYEONG_BOUNDARY_URL = 'https://raw.githubusercontent.com/KnellBalm/kr-admin-geojson/main/sig.geojson';
+        map.on('load', () => {
+            fetch(GWANGMYEONG_BOUNDARY_URL).then(r => {
+                if (!r.ok) throw new Error('Boundary GeoJSON request failed: '+r.status);
+                return r.json();
+            }).then(data => {
+                const features=(data.features||[]).filter(f=>{
+                    const p=f.properties||{};
+                    return String(p.SIG_CD||'')==='41210'||String(p.FULL_NM||'').includes('광명시');
+                });
+                if (!features.length) throw new Error('광명시 경계 데이터 없음');
+                const holes=[];
+                features.forEach(f=>{
+                    const g=f.geometry||{};
+                    const polys=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];
+                    polys.forEach(poly=>{ if(poly[0]) holes.push(poly[0].slice().reverse()); });
+                });
+                const worldRing=[[-179.9,-85.0511],[179.9,-85.0511],[179.9,85.0511],[-179.9,85.0511],[-179.9,-85.0511]];
+                map.addSource('gwangmyeong-outside-mask',{type:'geojson',data:{
+                    type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[worldRing,...holes]}
+                }});
+                map.addLayer({id:'gwangmyeong-outside-fade',type:'fill',source:'gwangmyeong-outside-mask',
+                    paint:{'fill-color':'#dce7f2','fill-opacity':0.48}});
+                map.addSource('gwangmyeong-boundary',{type:'geojson',data:{type:'FeatureCollection',features}});
+                map.addLayer({id:'gwangmyeong-boundary-glow',type:'line',source:'gwangmyeong-boundary',
+                    paint:{'line-color':'#42dfff','line-width':8,'line-opacity':0.22}});
+                map.addLayer({id:'gwangmyeong-boundary-line',type:'line',source:'gwangmyeong-boundary',
+                    paint:{'line-color':'#57dfff','line-width':2.8,'line-opacity':0.98}});
+            }).catch(e=>console.warn('광명시 경계 레이어:',e));
         });
 
-        // 🌟 마커 클러스터 그룹 생성 (타임캡슐용, 필름용 통합 또는 개별)
-
-        // 광명시 경계 안쪽은 위성사진을 선명하게 유지하고, 바깥쪽은 반투명 안개 레이어로 흐리게 보이게 합니다.
-        const GWANGMYEONG_BOUNDARY_URL =
-            'https://raw.githubusercontent.com/KnellBalm/kr-admin-geojson/main/sig.geojson';
-
-        fetch(GWANGMYEONG_BOUNDARY_URL)
-            .then(response => {
-                if (!response.ok) throw new Error('Boundary GeoJSON request failed: ' + response.status);
-                return response.json();
-            })
-            .then(data => {
-                const features = (data.features || []).filter(feature => {
-                    const p = feature.properties || {};
-                    return String(p.SIG_CD || '') === '41210' ||
-                           String(p.FULL_NM || '').includes('광명시');
-                });
-                if (!features.length) throw new Error('Gwangmyeong feature not found in GeoJSON.');
-
-                // GeoJSON의 광명시 외곽선을 Leaflet 좌표 순서로 변환합니다.
-                const cityRings = [];
-                features.forEach(feature => {
-                    const geometry = feature.geometry || {};
-                    const polygons = geometry.type === 'Polygon'
-                        ? [geometry.coordinates]
-                        : geometry.type === 'MultiPolygon'
-                            ? geometry.coordinates
-                            : [];
-                    polygons.forEach(polygon => {
-                        if (polygon && polygon[0]) {
-                            cityRings.push(polygon[0].map(point => [point[1], point[0]]));
-                        }
+        // 지도 카메라와 같은 투영행렬을 사용하는 실제 3D 필름 크리스털
+        const film3DRegistry = new Map();
+        let film3DLayer = null;
+        function makeFilmCrystalLayer() {
+            return {
+                id:'gwangmyeong-film-crystals-3d',
+                type:'custom',
+                renderingMode:'3d',
+                onAdd(mapInstance, gl) {
+                    this.camera = new THREE.Camera();
+                    this.scene = new THREE.Scene();
+                    this.scene.add(new THREE.HemisphereLight(0xddeeff,0x1b1740,2.0));
+                    const light=new THREE.DirectionalLight(0xffffff,2.8);
+                    light.position.set(-40,-60,100); this.scene.add(light);
+                    const rim=new THREE.PointLight(0x55dfff,25,180);
+                    rim.position.set(30,20,50); this.scene.add(rim);
+                    this.geometry=new THREE.IcosahedronGeometry(1,0);
+                    this.material=new THREE.MeshPhysicalMaterial({
+                        color:0x788cff,metalness:0.28,roughness:0.16,
+                        clearcoat:1,clearcoatRoughness:0.08,flatShading:true
                     });
-                });
-                if (!cityRings.length) throw new Error('광명시 경계 좌표를 읽지 못했습니다.');
-
-                // 화면 바깥까지 덮는 큰 다각형에서 광명시 영역을 구멍으로 뚫어 바깥쪽만 흐리게 처리합니다.
-                const outsideMask = [
-                    [[-89.9, -179.9], [-89.9, 179.9], [89.9, 179.9], [89.9, -179.9]],
-                    ...cityRings
-                ];
-                L.polygon(outsideMask, {
-                    pane: 'overlayPane',
-                    interactive: false,
-                    stroke: false,
-                    fill: true,
-                    fillColor: '#dce7f2',
-                    fillOpacity: 0.48,
-                    smoothFactor: 0.5
-                }).addTo(map);
-
-                // 광명시 경계선만 선명하게 표시합니다. 내부에는 별도 색을 덮지 않습니다.
-                L.geoJSON({ type: 'FeatureCollection', features }, {
-                    interactive: false,
-                    style: {
-                        color: '#42dfff', weight: 10, opacity: 0.20,
-                        fill: false, lineCap: 'round', lineJoin: 'round'
+                    this.coreGeometry=new THREE.OctahedronGeometry(0.38,0);
+                    this.coreMaterial=new THREE.MeshBasicMaterial({color:0xb9f5ff});
+                    this.renderer=new THREE.WebGLRenderer({canvas:mapInstance.getCanvas(),context:gl,antialias:true});
+                    this.renderer.autoClear=false;
+                    this.models=[];
+                },
+                setFilms(films) {
+                    this.models.forEach(m=>this.scene.remove(m.group));
+                    this.models=[];
+                    (films||[]).forEach((film,i)=>{
+                        const coord=maplibregl.MercatorCoordinate.fromLngLat([Number(film.lon),Number(film.lat)],0);
+                        const group=new THREE.Group();
+                        const crystal=new THREE.Mesh(this.geometry,this.material);
+                        crystal.scale.set(9.0,15.0,9.0);
+                        crystal.rotation.set(0.18,0.22,0.12);
+                        group.add(crystal);
+                        const core=new THREE.Mesh(this.coreGeometry,this.coreMaterial);
+                        core.scale.setScalar(0.9); crystal.add(core);
+                        const shadow=new THREE.Mesh(new THREE.CircleGeometry(3.2,32),
+                            new THREE.MeshBasicMaterial({color:0x101a39,transparent:true,opacity:0.34,depthWrite:false}));
+                        shadow.rotation.x=-Math.PI/2; shadow.position.y=-3.9; group.add(shadow);
+                        this.scene.add(group);
+                        this.models.push({group,crystal,coord,phase:i*0.7});
+                    });
+                },
+                render(gl,matrixOrArgs) {
+                    const matrix = (matrixOrArgs && matrixOrArgs.defaultProjectionData)
+                        ? matrixOrArgs.defaultProjectionData.mainMatrix
+                        : matrixOrArgs;
+                    if (!matrix) return;
+                    const projection=new THREE.Matrix4().fromArray(matrix);
+                    this.models.forEach(item=>{
+                        const c=item.coord, scale=c.meterInMercatorCoordinateUnits();
+                        const model=new THREE.Matrix4()
+                            .makeTranslation(c.x,c.y,c.z)
+                            .scale(new THREE.Vector3(scale,-scale,scale))
+                            .multiply(new THREE.Matrix4().makeRotationX(Math.PI/2));
+                        item.group.position.set(0,0,0);
+                        item.crystal.rotation.y+=0.002;
+                        item.crystal.rotation.z+=0.001;
+                        const local=new THREE.Matrix4().makeTranslation(0,0,0);
+                        item.group.matrixAutoUpdate=false;
+                        item.group.matrix.copy(model);
+                        item.group.matrix.multiply(new THREE.Matrix4().makeScale(1,1,1));
+                        item.group.matrixWorldNeedsUpdate=true;
+                    });
+                    // 각 모델은 좌표별 모델 행렬을 사용해 별도 렌더링
+                    this.renderer.resetState();
+                    for (const item of this.models) {
+                        const c=item.coord, scale=c.meterInMercatorCoordinateUnits();
+                        const model=new THREE.Matrix4()
+                            .makeTranslation(c.x,c.y,c.z)
+                            .scale(new THREE.Vector3(scale,-scale,scale))
+                            .multiply(new THREE.Matrix4().makeRotationX(Math.PI/2));
+                        item.group.matrix.copy(model);
+                        item.group.matrixWorld.copy(model);
+                        item.group.matrixWorldNeedsUpdate=false;
                     }
-                }).addTo(map);
-
-                L.geoJSON({ type: 'FeatureCollection', features }, {
-                    interactive: false,
-                    style: {
-                        color: '#57dfff', weight: 3.5, opacity: 0.98,
-                        fill: false, lineCap: 'round', lineJoin: 'round'
-                    }
-                }).addTo(map);
-            })
-            .catch(error => console.warn('광명시 경계/외부 흐림 레이어 표시 실패:', error));
+                    this.camera.projectionMatrix.copy(projection);
+                    this.camera.projectionMatrixInverse.copy(projection).invert();
+                    this.camera.matrixWorld.identity();
+                    this.renderer.render(this.scene,this.camera);
+                    map.triggerRepaint();
+                }
+            };
+        }
+        map.on('load', () => {
+            film3DLayer=makeFilmCrystalLayer();
+            map.addLayer(film3DLayer);
+        });
+        function syncFilm3DModels() {
+            if (film3DLayer && film3DLayer.setFilms) film3DLayer.setFilms(cachedFilms);
+            if (map.triggerRepaint) map.triggerRepaint();
+        }
 
         // Inline SVG fallback keeps missing crystal PNGs from appearing as broken-image icons.
         function crystalFallbackData(kind = 'film') {
@@ -658,7 +893,7 @@
                 });
             }
         });
-        map.addLayer(markersGroup);
+        markersGroup.addTo(map);
 
         var userMarker = null;
         var capsuleMarkers = {};
@@ -890,6 +1125,7 @@
                 filmMarkers[film.id] = marker;
                 markersGroup.addLayer(marker);
             });
+            syncFilm3DModels();
         }
 
         let lastLat = null;
@@ -913,7 +1149,7 @@
 
                         userMarker = L.marker([currentLat, currentLon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
                         if (!visualTestMode) {
-                            map.setView([currentLat, currentLon], 14);
+                            map.setView([currentLat, currentLon], 16);
                         }
 
                         renderAllMarkers();
