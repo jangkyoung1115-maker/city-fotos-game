@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>광명시 시간캡슐 - PNG 및 지도 마커 고정 수정 v18</title>
+    <title>광명시 시간캡슐 - 필름·타임캡슐 사진 전환 적용 v23</title>
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" />
     
 
@@ -230,56 +230,38 @@
         #assembly-caption,.capsule-opening-caption { margin-top:10px; padding:12px 20px; border:1px solid rgba(110,220,255,.45);
             border-radius:999px; background:rgba(8,24,52,.75); font-size:15px; letter-spacing:.04em;
             text-shadow:0 0 12px #65cfff; box-shadow:0 0 24px rgba(63,180,255,.18); }
-        #time-capsule-opening { gap:22px; }
-        .capsule-device { position:relative; width:min(88vw,430px); height:250px; transform-style:preserve-3d;
-            animation:capsule-device-arrive 2.8s cubic-bezier(.2,.8,.2,1) forwards; }
-        .capsule-body { position:absolute; left:15%; top:54px; width:70%; height:142px; border:5px solid #9beeff;
-            border-radius:36px; background:linear-gradient(90deg,rgba(32,74,133,.96),rgba(24,34,88,.92) 45%,rgba(75,54,139,.96));
-            box-shadow:inset 0 0 24px rgba(89,220,255,.55),0 0 30px rgba(67,194,255,.55); overflow:hidden; }
-        .capsule-slot { position:absolute; left:8%; top:18px; width:84%; height:16px; border-radius:10px;
-            background:#07162f; border:2px solid #9ceeff; box-shadow:0 0 12px #63dcff; }
-        .capsule-inner-film { position:absolute; left:12%; top:50px; width:76%; height:48px; opacity:0;
-            background:linear-gradient(90deg,#68dfff,#8584ff,#e2a6ff); border:2px solid #f2ffff;
-            mask:repeating-linear-gradient(90deg,#000 0 18px,transparent 18px 24px); }
-        .capsule-core { position:absolute; left:calc(50% - 22px); top:63px; width:44px; height:44px; border-radius:50%;
-            background:radial-gradient(circle,#fff 0%,#bafaff 22%,#5b8cff 52%,rgba(117,76,255,.1) 75%);
-            box-shadow:0 0 22px 12px rgba(100,210,255,.65),0 0 60px rgba(110,110,255,.7); opacity:.25; }
-        .capsule-reel { position:absolute; top:78px; width:88px; height:88px; border:9px solid #9feeff; border-radius:50%;
-            background:radial-gradient(circle,#192b58 0 18%,#80dfff 20% 25%,#314d91 27% 55%,#c6aaff 58% 63%,#182b55 66%);
-            box-shadow:0 0 18px rgba(75,207,255,.65),inset 0 0 15px #d7faff; z-index:3; }
-        .reel-left { left:0; }.reel-right { right:0; }
-        .capsule-ring { position:absolute; top:46px; width:24px; height:160px; border:5px solid #c9f8ff; border-radius:50%;
-            box-shadow:0 0 16px rgba(89,220,255,.8); z-index:4; }
-        .ring-left { left:15%; }.ring-right { right:15%; }
-        .capsule-insert-film { position:absolute; z-index:5; left:0; top:91px; width:100%; height:62px; opacity:1; pointer-events:none; }
-        .capsule-film-token { position:absolute; top:0; width:31%; height:58px; object-fit:contain;
-            opacity:0; filter:drop-shadow(0 0 9px #65dfff); }
-        .capsule-film-token.token-1 { left:0; --dx:34vw; --dy:-44px; --rot:-18deg; }
-        .capsule-film-token.token-2 { left:17%; --dx:17vw; --dy:-65px; --rot:12deg; }
-        .capsule-film-token.token-3 { left:34.5%; --dx:0vw; --dy:-74px; --rot:0deg; }
-        .capsule-film-token.token-4 { left:52%; --dx:-17vw; --dy:-65px; --rot:-12deg; }
-        .capsule-film-token.token-5 { left:69%; --dx:-34vw; --dy:-44px; --rot:18deg; }
-        .capsule-energy { position:absolute; left:50%; top:50%; width:20px; height:20px; border-radius:50%;
-            background:#fff; opacity:0; transform:translate(-50%,-50%); box-shadow:0 0 35px 25px #65dfff,0 0 90px 55px #775dff; }
-        #time-capsule-opening.is-opening .capsule-film-token { animation:five-films-converge 1.45s cubic-bezier(.18,.78,.22,1) forwards; }
-        #time-capsule-opening.is-opening .token-1 { animation-delay:.15s; }
-        #time-capsule-opening.is-opening .token-2 { animation-delay:.27s; }
-        #time-capsule-opening.is-opening .token-3 { animation-delay:.39s; }
-        #time-capsule-opening.is-opening .token-4 { animation-delay:.51s; }
-        #time-capsule-opening.is-opening .token-5 { animation-delay:.63s; }
-        #time-capsule-opening.is-opening .capsule-inner-film { animation:inner-film-light .8s ease-out 2.15s forwards; }
-        #time-capsule-opening.is-opening .capsule-core { animation:capsule-core-on .9s ease-out 2.15s forwards; }
-        #time-capsule-opening.is-opening .capsule-energy { animation:capsule-energy-burst 1s ease-out 2.55s forwards; }
-        @keyframes capsule-device-arrive { 0%{transform:perspective(900px) rotateY(-24deg) scale(.72);opacity:0} 35%{opacity:1} 100%{transform:perspective(900px) rotateY(0) scale(1);opacity:1} }
-        @keyframes five-films-converge {
-            0% { opacity:0; transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.72); }
+        #time-capsule-opening { gap:0; }
+        .capsule-scene { position:relative; width:min(92vw,560px); height:min(78vh,560px); display:flex; align-items:center; justify-content:center; }
+        .scene-film { position:absolute; z-index:5; top:-180px; left:50%; width:min(76vw,360px); max-height:150px; object-fit:contain;
+            opacity:0; transform:translateX(-50%) scale(1); filter:drop-shadow(0 0 16px rgba(90,220,255,.85)); }
+        .scene-capsule { position:absolute; left:50%; top:54%; width:min(58vw,270px); max-height:310px; object-fit:contain;
+            transform:translate(-50%,-50%); filter:drop-shadow(0 0 22px rgba(90,210,255,.55)); }
+        .scene-capsule-open { opacity:0; }
+        .scene-photo { position:absolute; z-index:4; left:50%; top:52%; width:min(68vw,316px); aspect-ratio:4/3; object-fit:cover;
+            border:7px solid #f7f5ed; box-shadow:0 8px 30px rgba(0,0,0,.35),0 0 35px rgba(130,215,255,.7);
+            opacity:0; transform:translate(-50%,-50%) scale(.18); }
+        .scene-burst { position:absolute; z-index:3; left:50%; top:54%; width:20px; height:20px; border-radius:50%; opacity:0;
+            background:#fff; box-shadow:0 0 35px 25px #a9eaff,0 0 110px 75px rgba(100,145,255,.8); }
+        #time-capsule-opening.is-opening .scene-film { animation:scene-film-enter 1.05s cubic-bezier(.2,.78,.2,1) .12s forwards; }
+        #time-capsule-opening.is-opening .scene-capsule-closed { animation:scene-capsule-hide .42s ease-in 2.62s forwards; }
+        #time-capsule-opening.is-opening .scene-capsule-open { animation:scene-capsule-show .55s ease-out 2.22s forwards, scene-capsule-morph .34s ease-in 2.72s forwards; }
+        #time-capsule-opening.is-opening .scene-burst { animation:scene-burst 0.48s ease-out 2.68s forwards; }
+        #time-capsule-opening.is-opening .scene-photo { animation:scene-photo-form .48s cubic-bezier(.18,.82,.24,1) 2.72s forwards; }
+        @keyframes scene-film-enter {
+            0% { opacity:0; top:-180px; transform:translateX(-50%) scale(1); }
             18% { opacity:1; }
-            72% { opacity:1; transform:translate(0,0) rotate(0) scale(.72); }
-            100% { opacity:0; transform:translate(0,8px) scale(.18); }
+            72% { opacity:1; top:42%; transform:translateX(-50%) scale(.72); }
+            100% { opacity:0; top:54%; transform:translateX(-50%) scale(.12); }
         }
-        @keyframes inner-film-light { to{opacity:.9;filter:brightness(1.8)} }
-        @keyframes capsule-core-on { to{opacity:1;transform:scale(1.25)} }
-        @keyframes capsule-energy-burst { 0%{opacity:0;transform:translate(-50%,-50%) scale(.2)} 35%{opacity:1} 100%{opacity:0;transform:translate(-50%,-50%) scale(8)} }
+        @keyframes scene-capsule-hide { to { opacity:0; transform:translate(-50%,-50%) scale(.96); } }
+        @keyframes scene-capsule-show { from { opacity:0; transform:translate(-50%,-50%) scale(.92); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+        @keyframes scene-capsule-morph { to { opacity:0; transform:translate(-50%,-50%) scale(1.12); filter:blur(8px) brightness(2); } }
+        @keyframes scene-burst { 0% { opacity:0; transform:scale(.2); } 25% { opacity:1; } 100% { opacity:0; transform:scale(15); } }
+        @keyframes scene-photo-form {
+            0% { opacity:0; transform:translate(-50%,-50%) scale(.2); filter:brightness(2.5) blur(7px); }
+            65% { opacity:1; transform:translate(-50%,-50%) scale(1.06); filter:brightness(1.2) blur(0); }
+            100% { opacity:1; transform:translate(-50%,-50%) scale(1); filter:brightness(1) blur(0); }
+        }
         @media (prefers-reduced-motion: reduce) {
             .assembly-fragment,#completed-film-reveal,.capsule-3d,.capsule-top,.capsule-core { animation-duration:.01ms !important; animation-iteration-count:1 !important; }
         }
@@ -390,26 +372,14 @@
         <div id="assembly-caption">다섯 결정체가 하나의 완결된 필름으로 변환됩니다</div>
     </div>
     <div id="time-capsule-opening" aria-live="polite">
-        <div class="capsule-device">
-            <div class="capsule-reel reel-left"></div>
-            <div class="capsule-reel reel-right"></div>
-            <div class="capsule-body">
-                <div class="capsule-slot"></div>
-                <div class="capsule-inner-film"></div>
-                <div class="capsule-core"></div>
-            </div>
-            <div class="capsule-ring ring-left"></div>
-            <div class="capsule-ring ring-right"></div>
-            <div class="capsule-insert-film" aria-label="완성 필름 다섯 개가 모여 타임캡슐로 들어갑니다">
-                <img class="capsule-film-token token-1" src="" alt="">
-                <img class="capsule-film-token token-2" src="" alt="">
-                <img class="capsule-film-token token-3" src="" alt="">
-                <img class="capsule-film-token token-4" src="" alt="">
-                <img class="capsule-film-token token-5" src="" alt="">
-            </div>
-            <div class="capsule-energy"></div>
+        <div class="capsule-scene">
+            <img class="scene-film" src="./assets/completed_film_ribbon.png" alt="완성된 필름">
+            <img class="scene-capsule scene-capsule-closed" src="./assets/map/time_capsule_closed_oval.png" alt="닫힌 타임캡슐">
+            <img class="scene-capsule scene-capsule-open" src="./assets/time_capsule_opened.png" alt="열린 타임캡슐">
+            <div class="scene-burst"></div>
+            <img class="scene-photo" id="capsule-result-photo" src="" alt="타임캡슐에서 나온 사진">
         </div>
-        <div class="capsule-opening-caption">완성 필름 5개가 모여 타임캡슐을 엽니다</div>
+        <div class="capsule-opening-caption">완성된 필름이 타임캡슐을 열고 기억의 사진으로 변합니다</div>
     </div>
 
     <!-- 2. 미니게임 (먼지 닦기) 팝업 -->
@@ -1662,16 +1632,20 @@
         function playTimeCapsuleOpening(onComplete) {
             const overlay = document.getElementById('time-capsule-opening');
             if (!overlay) { if (typeof onComplete === 'function') onComplete(); return; }
+            const resultPhoto = document.getElementById('capsule-result-photo');
+            if (resultPhoto && currentMissionCapsule && currentMissionCapsule.url) {
+                resultPhoto.src = currentMissionCapsule.url;
+            }
             overlay.classList.remove('is-opening');
-            const filmImages = overlay.querySelectorAll('.capsule-film-token');
-            filmImages.forEach(img => { img.src = completedFilmData(); });
+            // Restart CSS animations cleanly for every capsule.
+            void overlay.offsetWidth;
             overlay.style.display = 'flex';
             requestAnimationFrame(() => overlay.classList.add('is-opening'));
             window.setTimeout(() => {
                 overlay.classList.remove('is-opening');
                 overlay.style.display = 'none';
                 if (typeof onComplete === 'function') onComplete();
-            }, 4700);
+            }, 3650);
         }
 
         function startMission() {
