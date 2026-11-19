@@ -309,7 +309,18 @@
             .top-panel { background:linear-gradient(115deg,rgba(9,28,55,.94),rgba(42,57,98,.90)); }
         }
 
-    </style>
+    
+        /* 줌아웃 시 오브제 대신 표시하는 숫자 마커 */
+        .zoom-count-marker {
+            display:flex; align-items:center; justify-content:center;
+            min-width:30px; height:30px; padding:0 7px; box-sizing:border-box;
+            border-radius:999px; background:rgba(18,39,68,.96);
+            border:2px solid rgba(235,245,255,.96); color:#fff;
+            font:700 13px/1 Arial,sans-serif;
+            box-shadow:0 2px 9px rgba(5,18,38,.42);
+            cursor:pointer; user-select:none; white-space:nowrap;
+        }
+</style>
 </head>
 <body>
 
@@ -514,6 +525,7 @@
             style: 'https://tiles.openfreemap.org/styles/liberty',
             center: [126.8646, 37.4784],
             zoom: 12.8,
+            maxZoom: 18,
             pitch: 38,
             bearing: -12,
             maxPitch: 60,
@@ -726,7 +738,7 @@
                     type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[worldRing,...holes]}
                 }});
                 map.addLayer({id:'gwangmyeong-outside-fade',type:'fill',source:'gwangmyeong-outside-mask',
-                    paint:{'fill-color':'#dce7f2','fill-opacity':0.48}});
+                    paint:{'fill-color':'#101a2b','fill-opacity':0.62}});
                 map.addSource('gwangmyeong-boundary',{type:'geojson',data:{type:'FeatureCollection',features}});
                 map.addLayer({id:'gwangmyeong-boundary-glow',type:'line',source:'gwangmyeong-boundary',
                     paint:{'line-color':'#42dfff','line-width':8,'line-opacity':0.22}});
@@ -849,18 +861,18 @@
         // 현재 저장소에는 필름 파편 5종, 완성 필름 리본 1종, 닫힌 타임캡슐 1종이 있습니다.
         const GAME_ASSETS = {
             filmFragments: [
-                './assets/film_fragment_01_layer.png',
-                './assets/film_fragment_02_warmth.png',
-                './assets/film_fragment_03_flow.png',
-                './assets/film_fragment_04_afterimage.png',
-                './assets/film_fragment_05_light.png'
+                './assets/map/film_fragment_01_layer.png',
+                './assets/map/film_fragment_02_warmth.png',
+                './assets/map/film_fragment_03_flow.png',
+                './assets/map/film_fragment_04_afterimage.png',
+                './assets/map/film_fragment_05_light.png'
             ],
             completedFilm: './assets/completed_film_ribbon.png',
             capsules: {
-                modern: './assets/time_capsule_closed_oval.png',
-                'mid-era': './assets/time_capsule_closed_oval.png',
-                old: './assets/time_capsule_closed_oval.png',
-                ancient: './assets/time_capsule_closed_oval.png'
+                modern: './assets/map/time_capsule_closed_oval.png',
+                'mid-era': './assets/map/time_capsule_closed_oval.png',
+                old: './assets/map/time_capsule_closed_oval.png',
+                ancient: './assets/map/time_capsule_closed_oval.png'
             }
         };
 
@@ -908,6 +920,11 @@
         var capsuleMarkers = {};
         var filmMarkers = {};
         var tempPickMarker = null;
+
+        // 줌 18을 최대 확대, 줌 14부터 숫자 마커로 전환합니다.
+        const MAX_MAP_ZOOM = 18;
+        const NUMBER_MARKER_ZOOM = 14;
+        let zoomNumberMarkers = [];
         
         let currentLat = 37.4784;
         let currentLon = 126.8646;
@@ -1109,7 +1126,77 @@
             });
         }
 
-        map.on('zoomend', updateMapMarkerSizes);
+        map.on('zoomend', () => {
+            updateMapMarkerSizes();
+            updateZoomPresentation();
+        });
+        map.on('moveend', updateZoomPresentation);
+
+        function clearZoomNumberMarkers() {
+            zoomNumberMarkers.forEach(marker => marker.remove());
+            zoomNumberMarkers = [];
+        }
+
+        function updateZoomPresentation() {
+            if (!map || !markersGroup || !markersGroup.items) return;
+            const useNumbers = map.getZoom() <= NUMBER_MARKER_ZOOM;
+            const sourceMarkers = markersGroup.items;
+
+            if (!useNumbers) {
+                clearZoomNumberMarkers();
+                sourceMarkers.forEach(marker => {
+                    if (marker && marker.element) marker.element.style.display = '';
+                });
+                return;
+            }
+
+            sourceMarkers.forEach(marker => {
+                if (marker && marker.element) marker.element.style.display = 'none';
+            });
+            clearZoomNumberMarkers();
+
+            const canvas = map.getCanvas();
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            const cellSize = 72;
+            const buckets = new Map();
+
+            sourceMarkers.forEach(marker => {
+                if (!marker || !marker.marker || !marker.marker.getLngLat()) return;
+                const lngLat = marker.marker.getLngLat();
+                const point = map.project([lngLat.lng, lngLat.lat]);
+                if (point.x < -cellSize || point.y < -cellSize ||
+                    point.x > width + cellSize || point.y > height + cellSize) return;
+                const key = Math.floor(point.x / cellSize) + ':' + Math.floor(point.y / cellSize);
+                if (!buckets.has(key)) buckets.set(key, []);
+                buckets.get(key).push(point);
+            });
+
+            buckets.forEach(points => {
+                const count = points.length;
+                const avgX = points.reduce((sum, point) => sum + point.x, 0) / count;
+                const avgY = points.reduce((sum, point) => sum + point.y, 0) / count;
+                const center = map.unproject([avgX, avgY]);
+                const element = document.createElement('div');
+                element.className = 'zoom-count-marker';
+                element.textContent = String(count);
+                element.setAttribute('role', 'button');
+                element.setAttribute('aria-label', `등록 오브제 ${count}개`);
+                element.title = `등록 오브제 ${count}개 · 클릭하면 확대`;
+                element.addEventListener('click', event => {
+                    event.stopPropagation();
+                    map.easeTo({
+                        center: [center.lng, center.lat],
+                        zoom: Math.min(NUMBER_MARKER_ZOOM + 1, MAX_MAP_ZOOM),
+                        duration: 350
+                    });
+                });
+                zoomNumberMarkers.push(
+                    new maplibregl.Marker({element, anchor:'center'})
+                        .setLngLat([center.lng, center.lat]).addTo(map)
+                );
+            });
+        }
 
         function renderAllMarkers() {
             if (!map || (typeof map.isStyleLoaded === 'function' && !map.isStyleLoaded())) {
@@ -1119,6 +1206,7 @@
                 return;
             }
             markersGroup.clearLayers();
+            clearZoomNumberMarkers();
             capsuleMarkers = {};
             filmMarkers = {};
 
@@ -1220,6 +1308,8 @@
                 const attachedCount = markersGroup.items ? markersGroup.items.length : -1;
                 showFilmDiagnostic(`Firestore 필름 ${cachedFilms.length}개\n필름 마커 생성 ${validCount}개\n타임캡슐 마커 생성 ${capsuleCount}개\n지도 등록 마커 ${attachedCount}개`);
             }
+            updateMapMarkerSizes();
+            updateZoomPresentation();
         }
 
         let lastLat = null;
