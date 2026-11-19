@@ -845,24 +845,22 @@
         });
         function syncFilm3DModels() { /* 비활성화: 단일 지도 마커 렌더러 사용 */ }
 
-        // GitHub 저장소에 실제 업로드된 PNG 원본을 사용합니다.
+        // GitHub 저장소의 실제 경로와 파일명에 맞춘 PNG 원본 경로입니다.
+        // 현재 저장소에는 필름 파편 5종, 완성 필름 리본 1종, 닫힌 타임캡슐 1종이 있습니다.
         const GAME_ASSETS = {
             filmFragments: [
-                './assets/film/film_fragment_01.png',
-                './assets/film/film_fragment_02.png',
-                './assets/film/film_fragment_03.png',
-                './assets/film/film_fragment_04.png',
-                './assets/film/film_fragment_05.png',
-                './assets/film/film_fragment_06.png',
-                './assets/film/film_fragment_07.png',
-                './assets/film/film_fragment_08.png'
+                './assets/film_fragment_01_layer.png',
+                './assets/film_fragment_02_warmth.png',
+                './assets/film_fragment_03_flow.png',
+                './assets/film_fragment_04_afterimage.png',
+                './assets/film_fragment_05_light.png'
             ],
-            completedFilm: './assets/film/completed_crystal_film.png',
+            completedFilm: './assets/completed_film_ribbon.png',
             capsules: {
-                modern: './assets/capsule/capsule_01_modern.png',
-                'mid-era': './assets/capsule/capsule_02_mid-era.png',
-                old: './assets/capsule/capsule_03_old.png',
-                ancient: './assets/capsule/capsule_04_ancient.png'
+                modern: './assets/time_capsule_closed_oval.png',
+                'mid-era': './assets/time_capsule_closed_oval.png',
+                old: './assets/time_capsule_closed_oval.png',
+                ancient: './assets/time_capsule_closed_oval.png'
             }
         };
 
