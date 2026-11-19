@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>광명시 시간캡슐 - 오로라 아세테이트 오브제 지도 테스트</title>
+    <title>광명시 시간캡슐 - D+F+E 디자인 1차</title>
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" />
     
 
@@ -309,20 +309,6 @@
             .top-panel { background:linear-gradient(115deg,rgba(9,28,55,.94),rgba(42,57,98,.90)); }
         }
 
-    
-        /* v8 GeoJSON 마커: 지도 좌표는 MapLibre가 직접 투영하므로 3D에서도 위치가 고정됩니다. */
-        .asset-test-note {
-            position:fixed; z-index:1400; left:12px; bottom:86px;
-            padding:8px 11px; border:1px solid rgba(93,220,255,.65);
-            border-radius:10px; background:rgba(5,18,38,.88); color:#eafaff;
-            font-size:10px; line-height:1.45; max-width:260px;
-            backdrop-filter:blur(8px); pointer-events:none;
-        }
-        .top-panel .asset-test-label {
-            color:#9ff3ff; font-size:10px; border:1px solid #6edcf4;
-            padding:4px 7px; border-radius:12px; white-space:nowrap;
-        }
-
     </style>
 </head>
 <body>
@@ -338,11 +324,8 @@
         <div class="visual-test-note">미리보기 전용 · 실제 수집 수량은 바뀌지 않습니다.</div>
     </div>
 
-    <div class="asset-test-note">오브제 시각 테스트 · Firestore 읽기 전용<br>지도 좌표·클러스터·새 PNG 에셋 확인용</div>
-
     <!-- 상단 상태바 -->
     <div class="top-panel">
-        <span class="asset-test-label">NEW ASSET TEST</span>
         <span>✧ 파편 <span id="fragment-count" class="fragment-badge">0</span>/5</span>
         <span>🎞 완성 필름 <span id="completed-film-count" class="completed-badge">15</span>/10</span>
         <span>👣 <span id="step-count" class="step-badge">0</span></span>
@@ -498,7 +481,6 @@
         let isBulkFilmMode = false;
 
         const visualTestMode = new URLSearchParams(window.location.search).get('test') === 'true';
-        const visualAssetReadOnly = true; // 이 테스트 파일은 Firestore 읽기 전용입니다.
 
         function previewFilmConversion() {
             // 실제 자원 수량을 바꾸지 않고 변환 연출만 재생합니다.
@@ -515,7 +497,7 @@
             if (visualTestMode) {
                 document.getElementById('visual-test-panel').style.display = 'block';
             }
-            if (urlParams.get('admin') === 'true' && !visualAssetReadOnly) {
+            if (urlParams.get('admin') === 'true') {
                 isAdminMode = true;
                 document.getElementById('admin-mode-btn').style.display = 'inline-block';
                 document.getElementById('admin-bulk-btn').style.display = 'inline-block';
@@ -527,14 +509,9 @@
         });
 
         // MapLibre GL + Three.js: 3D 벡터 건물과 카메라에 동기화되는 필름 크리스털
-        const mapTilerKey = window.prompt('MapTiler API 키를 입력해 주세요. (이 파일에는 저장되지 않습니다.)', '');
-        if (!mapTilerKey) {
-            document.getElementById('guide-banner').innerText = 'MapTiler 키가 필요합니다. 파일을 다시 열어 키를 입력해 주세요.';
-            throw new Error('MapTiler API key missing');
-        }
         const map = new maplibregl.Map({
             container: 'map',
-            style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${encodeURIComponent(mapTilerKey)}`,
+            style: 'https://tiles.openfreemap.org/styles/liberty',
             center: [126.8646, 37.4784],
             zoom: 12.8,
             pitch: 38,
@@ -568,7 +545,8 @@
                 const anchor = icon.iconAnchor || [size[0]/2, size[1]];
                 this.element.style.width = size[0] + 'px';
                 this.element.style.height = size[1] + 'px';
-                this.element.style.position = 'relative';
+                // MapLibre Marker가 자체적으로 position:absolute와 좌표 transform을 관리합니다.
+                // relative를 인라인으로 지정하면 마커가 지도 좌표에 배치되지 않을 수 있으므로 지정하지 않습니다.
                 this.element.style.cursor = 'pointer';
                 this.marker = new maplibregl.Marker({
                     element: this.element,
@@ -724,50 +702,36 @@
                 fn(event);
             });
         };
-        // MapLibre layer-specific events (click/hover) use the native overload.
-        map.onLayer = function(name, layerId, fn) {
-            return originalMapOn(name, layerId, fn);
-        };
-        // v8에서 확인한 MapTiler 3D 건물 및 광명시 경계 표현을 사용합니다.
+        // 광명시 경계와 도시 외부의 흐림 마스크
         const GWANGMYEONG_BOUNDARY_URL = 'https://raw.githubusercontent.com/KnellBalm/kr-admin-geojson/main/sig.geojson';
-        map.on('load', async () => {
-            try {
-                const style = map.getStyle();
-                const sourceId = Object.keys(style.sources || {}).find(id => {
-                    const s = style.sources[id];
-                    return s.type === 'vector' && ((s.url || '').includes('maptiler') || (s.tiles || []).some(t => String(t).includes('maptiler')));
-                }) || Object.keys(style.sources || {}).find(id => style.sources[id].type === 'vector');
-                const beforeId = (style.layers || []).find(l => l.type === 'symbol')?.id;
-                if (sourceId) {
-                    map.addLayer({
-                        id: 'gwangmyeong-3d-buildings', type: 'fill-extrusion', source: sourceId,
-                        'source-layer': 'building', minzoom: 13,
-                        filter: ['all', ['==', ['geometry-type'], 'Polygon']],
-                        paint: {
-                            'fill-extrusion-color': ['coalesce', ['get', 'render_color'], ['get', 'building_colour'], '#d9d7d2'],
-                            'fill-extrusion-height': ['max', 3, ['to-number', ['coalesce', ['get', 'render_height'], ['get', 'height'], 10]]],
-                            'fill-extrusion-base': ['max', 0, ['to-number', ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0]]],
-                            'fill-extrusion-opacity': 0.94,
-                            'fill-extrusion-vertical-gradient': true
-                        }
-                    }, beforeId);
-                }
-            } catch (e) { console.warn('3D 건물 레이어:', e); }
-            try {
-                const r = await fetch(GWANGMYEONG_BOUNDARY_URL);
-                if (!r.ok) throw new Error('Boundary GeoJSON request failed: ' + r.status);
-                const data = await r.json();
-                const features = (data.features || []).filter(f => {
-                    const p = f.properties || {};
-                    return String(p.SIG_CD || '') === '41210' || String(p.FULL_NM || '').includes('광명시');
+        map.on('load', () => {
+            fetch(GWANGMYEONG_BOUNDARY_URL).then(r => {
+                if (!r.ok) throw new Error('Boundary GeoJSON request failed: '+r.status);
+                return r.json();
+            }).then(data => {
+                const features=(data.features||[]).filter(f=>{
+                    const p=f.properties||{};
+                    return String(p.SIG_CD||'')==='41210'||String(p.FULL_NM||'').includes('광명시');
                 });
                 if (!features.length) throw new Error('광명시 경계 데이터 없음');
-                map.addSource('gwangmyeong-boundary', { type: 'geojson', data: { type: 'FeatureCollection', features } });
-                map.addLayer({ id: 'gwangmyeong-boundary-glow', type: 'line', source: 'gwangmyeong-boundary',
-                    paint: { 'line-color': '#42dfff', 'line-width': 8, 'line-opacity': 0.22 } });
-                map.addLayer({ id: 'gwangmyeong-boundary-line', type: 'line', source: 'gwangmyeong-boundary',
-                    paint: { 'line-color': '#57dfff', 'line-width': 2.8, 'line-opacity': 0.98 } });
-            } catch (e) { console.warn('광명시 경계 레이어:', e); }
+                const holes=[];
+                features.forEach(f=>{
+                    const g=f.geometry||{};
+                    const polys=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];
+                    polys.forEach(poly=>{ if(poly[0]) holes.push(poly[0].slice().reverse()); });
+                });
+                const worldRing=[[-179.9,-85.0511],[179.9,-85.0511],[179.9,85.0511],[-179.9,85.0511],[-179.9,-85.0511]];
+                map.addSource('gwangmyeong-outside-mask',{type:'geojson',data:{
+                    type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[worldRing,...holes]}
+                }});
+                map.addLayer({id:'gwangmyeong-outside-fade',type:'fill',source:'gwangmyeong-outside-mask',
+                    paint:{'fill-color':'#dce7f2','fill-opacity':0.48}});
+                map.addSource('gwangmyeong-boundary',{type:'geojson',data:{type:'FeatureCollection',features}});
+                map.addLayer({id:'gwangmyeong-boundary-glow',type:'line',source:'gwangmyeong-boundary',
+                    paint:{'line-color':'#42dfff','line-width':8,'line-opacity':0.22}});
+                map.addLayer({id:'gwangmyeong-boundary-line',type:'line',source:'gwangmyeong-boundary',
+                    paint:{'line-color':'#57dfff','line-width':2.8,'line-opacity':0.98}});
+            }).catch(e=>console.warn('광명시 경계 레이어:',e));
         });
 
         // 지도 카메라와 같은 투영행렬을 사용하는 실제 3D 필름 크리스털
@@ -872,16 +836,13 @@
                 }
             };
         }
-        // 새 PNG 오브제는 GeoJSON symbol layer가 렌더링합니다.
-        // 기존 Three.js 결정체 레이어는 위치 중복을 막기 위해 이 테스트 빌드에서 추가하지 않습니다.
+        // 안정화 단계: Three.js 사용자 정의 레이어를 지도에서 제외합니다.
+        // 모든 오브제는 MapLibre Marker의 실제 경위도 좌표로만 표시합니다.
         map.on('load', () => {
             renderAllMarkers();
             updateMapMarkerSizes();
         });
-        function syncFilm3DModels() {
-            // 이 테스트 빌드에서는 v8 GeoJSON symbol layer가 필름 PNG를 렌더링합니다.
-            // Three.js 결정체를 동시에 표시하면 오브제가 겹치므로 사용하지 않습니다.
-        }
+        function syncFilm3DModels() { /* 비활성화: 단일 지도 마커 렌더러 사용 */ }
 
         // Inline SVG fallback keeps missing crystal PNGs from appearing as broken-image icons.
         function crystalFallbackData(kind = 'film') {
@@ -902,6 +863,13 @@
                     <path d="M23 15 L29 65 M42 28 L53 43 L65 5 M77 57 L96 24" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="2"/>
                     </svg>`;
             return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+        }
+
+        // 타임캡슐 마커 이미지: 이전 버전에서 호출하던 함수가 누락되어
+        // renderAllMarkers()가 캡슐 처리 중단 후 필름 마커까지 그리지 못하던 문제를 수정합니다.
+        // 현재는 내장 SVG 대체 이미지를 사용하며 Firebase 데이터에는 영향을 주지 않습니다.
+        function capsuleMarkerData(capsuleType = 'modern') {
+            return crystalFallbackData('capsule');
         }
 
         // 모든 필름 조각에 공통으로 사용하는 A안(다면체 결정체) 3D 스타일 오브젝트
@@ -1037,7 +1005,6 @@
         }
 
         function collectFilmFragment(amount = 1) {
-            if (visualAssetReadOnly) { alert('시각 에셋 테스트에서는 실제 수집이 비활성화되어 있습니다.'); return; }
             userFragments += Math.max(0, Number(amount) || 0);
             const newlyCompleted = Math.floor(userFragments / 5);
             if (newlyCompleted > 0) {
@@ -1073,8 +1040,21 @@
                     cachedCapsules.push(data);
                 });
 
-                // 시각 에셋 테스트에서는 Firestore에 기본 캡슐을 자동 생성하지 않습니다.
-                renderAllMarkers();
+                if (cachedCapsules.length === 0) {
+                    let defaultCap = {
+                        title: "1980년대 광명시장 전경",
+                        region: "광명동",
+                        capsuleType: "modern",
+                        photoYear: "1980년대",
+                        lat: 37.4784,
+                        lon: 126.8646,
+                        url: "https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=400",
+                        desc: "활기 넘쳤던 옛 광명시장 입구의 풍경입니다."
+                    };
+                    db.collection("capsules").add(defaultCap);
+                } else {
+                    renderAllMarkers();
+                }
             });
 
             db.collection("admin_films").onSnapshot((snapshot) => {
@@ -1121,215 +1101,169 @@
             return R * c;
         }
 
-
-        // v8에서 검증한 MapLibre GeoJSON 클러스터 구조를 사용합니다.
-        // 기존 DOM 마커/Three.js 결정체 대신 새 PNG 에셋을 지도 엔진의 symbol layer로 표시합니다.
-        const OBJECT_SOURCE = 'gwangmyeong-objects';
-        const OBJECT_LAYER_CLUSTERS = 'gwangmyeong-object-clusters';
-        const OBJECT_LAYER_CLUSTER_COUNT = 'gwangmyeong-object-cluster-count';
-        const OBJECT_LAYER_POINTS = 'gwangmyeong-object-points';
-        const filmAssetFiles = [
-            'assets/map/film_fragment_01_layer.png',
-            'assets/map/film_fragment_02_warmth.png',
-            'assets/map/film_fragment_03_flow.png',
-            'assets/map/film_fragment_04_afterimage.png',
-            'assets/map/film_fragment_05_light.png'
-        ];
-        const capsuleAssetFile = 'assets/map/time_capsule_closed_oval.png';
-        let objectSourceReady = false;
-        let objectImageReady = false;
-
-        function loadMapImage(url) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error('이미지 로드 실패: ' + url));
-                img.src = url;
+        // 🌟 모든 마커를 클러스터 그룹에 등록하여 깔끔하게 관리
+        // 지도 확대/축소 단계에 맞춰 필름 조각 마커의 실제 픽셀 크기를 조정합니다.
+        // 원본 이미지의 가로세로 비율은 object-fit: contain으로 그대로 유지합니다.
+        function getFilmMarkerIcon(shardImage, zoomLevel) {
+            const scale = Math.max(0.78, Math.min(1.45, Math.pow(1.10, zoomLevel - 14)));
+            const width = Math.round(58 * scale);
+            const height = Math.round(38 * scale);
+            return L.divIcon({
+                className: 'crystal-film-marker',
+                html: `<div class="film-marker-art" style="width:${width}px;height:${height}px">
+                    <img src="${shardImage}" alt="크리스털 필름 파편" onerror="this.onerror=null;this.src=crystalFallbackData('film');this.classList.add('crystal-fallback')">
+                    <span class="film-marker-ground"></span>
+                </div>`,
+                iconSize: [width, height],
+                iconAnchor: [width / 2, height]
             });
         }
 
-        function filmAssetForId(id) {
-            const s = String(id || 'film');
-            let hash = 0;
-            for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
-            return 'film-fragment-' + (hash % 5 + 1);
-        }
-
-        async function setupGeoJSONObjectLayers() {
-            if (objectSourceReady) return;
-            const loaded = await Promise.all([
-                ...filmAssetFiles.map(loadMapImage),
-                loadMapImage(capsuleAssetFile)
-            ]);
-            loaded.forEach((img, i) => {
-                const id = i < 5 ? `film-fragment-${i + 1}` : 'time-capsule-oval';
-                if (map.hasImage(id)) map.removeImage(id);
-                map.addImage(id, img, { pixelRatio: 2 });
+        function getCapsuleMarkerIcon(capsuleImage, collected, zoomLevel) {
+            // 지도 축척에 맞춰 캡슐도 필름 조각과 함께 커지고 작아집니다.
+            const scale = Math.max(0.58, Math.min(1.65, Math.pow(1.12, zoomLevel - 14)));
+            const width = Math.round(56 * scale);
+            const height = Math.round(76 * scale);
+            return L.divIcon({
+                className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
+                html: `<div class="capsule-marker-art" style="width:${width}px;height:${height}px">
+                    <img src="${capsuleImage}" alt="타임캡슐" style="left:${Math.round(4*scale)}px;width:${Math.round(48*scale)}px;height:${Math.round(68*scale)}px" onerror="this.onerror=null;this.src=crystalFallbackData('capsule');this.classList.add('crystal-fallback')">
+                    <span class="capsule-marker-ground" style="width:${Math.round(36*scale)}px;height:${Math.max(5,Math.round(9*scale))}px"></span>
+                </div>`,
+                iconSize: [width, height],
+                iconAnchor: [width / 2, height - Math.max(1, Math.round(scale))],
+                popupAnchor: [0, -Math.round(66 * scale)]
             });
-            objectImageReady = true;
-
-            map.addSource(OBJECT_SOURCE, {
-                type: 'geojson',
-                data: { type: 'FeatureCollection', features: [] },
-                cluster: true,
-                clusterMaxZoom: 13,
-                clusterRadius: 54,
-                clusterProperties: {
-                    filmCount: ['+', ['case', ['==', ['get', 'kind'], 'film'], 1, 0]],
-                    capsuleCount: ['+', ['case', ['==', ['get', 'kind'], 'capsule'], 1, 0]]
-                }
-            });
-
-            map.addLayer({
-                id: OBJECT_LAYER_CLUSTERS, type: 'circle', source: OBJECT_SOURCE,
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-radius': ['interpolate', ['linear'], ['get', 'point_count'], 2, 17, 10, 22, 30, 28, 100, 34],
-                    'circle-color': '#62eaff',
-                    'circle-stroke-color': '#f1ffff',
-                    'circle-stroke-width': 2.5,
-                    'circle-opacity': 0.96
-                }
-            });
-            map.addLayer({
-                id: OBJECT_LAYER_CLUSTER_COUNT, type: 'symbol', source: OBJECT_SOURCE,
-                filter: ['has', 'point_count'],
-                layout: {
-                    'text-field': ['to-string', ['get', 'point_count']],
-                    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-                    'text-size': 14,
-                    'text-allow-overlap': true
-                },
-                paint: { 'text-color': '#09213c' }
-            });
-            map.addLayer({
-                id: OBJECT_LAYER_POINTS, type: 'symbol', source: OBJECT_SOURCE,
-                filter: ['!', ['has', 'point_count']],
-                layout: {
-                    'icon-image': ['get', 'iconId'],
-                    'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.22, 9, 0.34, 12, 0.48, 14, 0.64, 17, 0.82, 20, 1.0],
-                    'icon-anchor': 'center',
-                    'icon-allow-overlap': true,
-                    'icon-ignore-placement': true
-                }
-            });
-
-            map.onLayer('click', OBJECT_LAYER_CLUSTERS, e => {
-                const feature = e.features && e.features[0];
-                if (!feature) return;
-                map.getSource(OBJECT_SOURCE).getClusterExpansionZoom(feature.properties.cluster_id, (err, zoom) => {
-                    if (!err) map.easeTo({ center: feature.geometry.coordinates, zoom, duration: 450 });
-                });
-                e.preventDefault();
-            });
-            map.onLayer('click', OBJECT_LAYER_POINTS, e => {
-                const feature = e.features && e.features[0];
-                if (!feature) return;
-                const p = feature.properties || {};
-                if (p.kind === 'film') {
-                    const film = cachedFilms.find(item => String(item.id) === String(p.objectId));
-                    if (!film) return;
-                    if (isAdminMode) {
-                        new maplibregl.Popup({ offset: 12 })
-                            .setLngLat(feature.geometry.coordinates)
-                            .setText('테스트 모드에서는 필름 삭제가 비활성화되어 있습니다.')
-                            .addTo(map);
-                    } else {
-                        new maplibregl.Popup({ offset: 12 })
-                            .setLngLat(feature.geometry.coordinates)
-                            .setText('필름 조각 위치 확인 · 테스트 모드에서는 수집/삭제가 비활성화되어 있습니다.')
-                            .addTo(map);
-                    }
-                } else {
-                    const cap = cachedCapsules.find(item => String(item.id) === String(p.objectId));
-                    if (cap) {
-                        const year = cap.photoYear ? ` · ${cap.photoYear}` : '';
-                        new maplibregl.Popup({ offset: 12 })
-                            .setLngLat(feature.geometry.coordinates)
-                            .setText(`${cap.title || '타임캡슐'}${year}`)
-                            .addTo(map);
-                    }
-                }
-                e.preventDefault();
-            });
-            map.onLayer('mouseenter', OBJECT_LAYER_CLUSTERS, () => map.getCanvas().style.cursor = 'pointer');
-            map.onLayer('mouseleave', OBJECT_LAYER_CLUSTERS, () => map.getCanvas().style.cursor = '');
-            map.onLayer('mouseenter', OBJECT_LAYER_POINTS, () => map.getCanvas().style.cursor = 'pointer');
-            map.onLayer('mouseleave', OBJECT_LAYER_POINTS, () => map.getCanvas().style.cursor = '');
-
-            objectSourceReady = true;
-            renderAllMarkers();
-        }
-
-        function renderAllMarkers() {
-            if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return;
-            if (!objectSourceReady) {
-                if (!window.__objectSetupQueued) {
-                    window.__objectSetupQueued = true;
-                    setupGeoJSONObjectLayers().catch(err => {
-                        console.error('새 오브제 이미지/GeoJSON 레이어 설정 오류:', err);
-                        showFilmDiagnostic('새 PNG 에셋 로드 실패: ' + err.message);
-                    }).finally(() => { window.__objectSetupQueued = false; });
-                }
-                return;
-            }
-
-            const features = [];
-            capsuleMarkers = {};
-            filmMarkers = {};
-            const album = getAlbum();
-
-            cachedCapsules.forEach(cap => {
-                const lat = Number(cap.lat ?? cap.latitude);
-                const lon = Number(cap.lon ?? cap.lng ?? cap.longitude);
-                if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
-                const collected = album.some(item => item.id === cap.id);
-                capsuleMarkers[cap.id] = { data: cap, collected };
-                features.push({
-                    type: 'Feature',
-                    id: 'capsule-' + String(cap.id),
-                    geometry: { type: 'Point', coordinates: [lon, lat] },
-                    properties: {
-                        kind: 'capsule',
-                        objectId: String(cap.id),
-                        title: String(cap.title || '타임캡슐'),
-                        iconId: 'time-capsule-oval',
-                        collected: collected ? 1 : 0
-                    }
-                });
-            });
-
-            cachedFilms.forEach(film => {
-                const lat = Number(film.lat ?? film.latitude);
-                const lon = Number(film.lon ?? film.lng ?? film.longitude);
-                if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
-                const iconId = filmAssetForId(film.id);
-                filmMarkers[film.id] = { data: film, iconId };
-                features.push({
-                    type: 'Feature',
-                    id: 'film-' + String(film.id),
-                    geometry: { type: 'Point', coordinates: [lon, lat] },
-                    properties: {
-                        kind: 'film',
-                        objectId: String(film.id),
-                        title: '필름 조각',
-                        iconId
-                    }
-                });
-            });
-
-            const source = map.getSource(OBJECT_SOURCE);
-            if (source) source.setData({ type: 'FeatureCollection', features });
-            syncFilm3DModels(); // 아래에서 3D 중복 레이어를 비활성화한 상태이므로 데이터 쓰기만 유지합니다.
-            if (filmDebugMode) {
-                showFilmDiagnostic(`Firestore 필름 ${Object.keys(filmMarkers).length}개\n타임캡슐 ${Object.keys(capsuleMarkers).length}개\nGeoJSON 오브제 ${features.length}개`);
-            }
         }
 
         function updateMapMarkerSizes() {
-            // MapLibre symbol layer의 icon-size 보간이 확대/축소를 자동 처리합니다.
+            const zoomLevel = map.getZoom();
+
+            Object.values(filmMarkers).forEach(marker => {
+                if (marker && marker._filmShardImage) {
+                    marker.setIcon(getFilmMarkerIcon(marker._filmShardImage, zoomLevel));
+                }
+            });
+
+            Object.values(capsuleMarkers).forEach(entry => {
+                if (entry && entry.marker && entry.capsuleImage) {
+                    entry.marker.setIcon(getCapsuleMarkerIcon(entry.capsuleImage, entry.collected, zoomLevel));
+                }
+            });
         }
+
         map.on('zoomend', updateMapMarkerSizes);
+
+        function renderAllMarkers() {
+            if (!map || (typeof map.isStyleLoaded === 'function' && !map.isStyleLoaded())) {
+                map.once('load', () => {
+                    renderAllMarkers();
+                });
+                return;
+            }
+            markersGroup.clearLayers();
+            capsuleMarkers = {};
+            filmMarkers = {};
+
+            let capsules = getCapsules();
+            let album = getAlbum();
+
+            // 1. 타임캡슐 렌더링
+            capsules.forEach(cap => {
+                const capLat = Number(cap.lat);
+                const capLon = Number(cap.lon);
+                if (!Number.isFinite(capLat) || !Number.isFinite(capLon) ||
+                    capLat < -90 || capLat > 90 || capLon < -180 || capLon > 180) {
+                    console.warn('좌표가 올바르지 않아 타임캡슐 마커를 건너뜁니다:', cap.id, cap.lat, cap.lon);
+                    return;
+                }
+                let collected = album.some(item => item.id === cap.id);
+                
+                // 이전에 등록된 캡슐은 modern 유형으로 표시합니다.
+                let capsuleType = cap.capsuleType || 'modern';
+                let capsuleImage = capsuleMarkerData(capsuleType);
+                let crystalIcon = getCapsuleMarkerIcon(capsuleImage, collected, map.getZoom());
+
+                let marker = L.marker([capLat, capLon], {icon: crystalIcon});
+                let yearLabel = cap.photoYear ? `<br>사진 시기: ${cap.photoYear}` : '';
+                marker.bindPopup(`<b>[${cap.region || '기타'}] ${cap.title}</b>${yearLabel}<br>${collected ? '수집 완료' : '미발견 타임캡슐'}`);
+                
+                capsuleMarkers[cap.id] = { marker: marker, data: cap, collected: collected, capsuleImage: capsuleImage };
+                markersGroup.addLayer(marker);
+            });
+
+            // 2. 필름 조각 렌더링
+            cachedFilms.forEach(film => {
+                const filmLat = Number(film.lat ?? film.latitude);
+                const filmLon = Number(film.lon ?? film.lng ?? film.longitude);
+                if (!Number.isFinite(filmLat) || !Number.isFinite(filmLon) ||
+                    filmLat < -90 || filmLat > 90 || filmLon < -180 || filmLon > 180) {
+                    console.warn('좌표가 올바르지 않아 필름 마커를 건너뜁니다:', film.id, film.lat, film.lon);
+                    return;
+                }
+                let filmIdText = String(film.id || 'film');
+                let filmHash = 0;
+                for (let i = 0; i < filmIdText.length; i++) filmHash = (filmHash + filmIdText.charCodeAt(i) * (i + 1)) % 997;
+                // Firestore admin_films 문서 한 건마다 지도에 필름 조각 하나를 표시합니다.
+                let shardImage = crystalShardData();
+                let miniFilmIcon = getFilmMarkerIcon(shardImage, map.getZoom());
+                let marker = L.marker([filmLat, filmLon], {icon: miniFilmIcon});
+                marker._filmShardImage = shardImage;
+                
+                if (isAdminMode) {
+                    marker.bindPopup("<b>🛠️ [관리자] 필름 조각</b><br>클릭하면 이 필름이 삭제됩니다.");
+                } else {
+                    marker.bindPopup("<b>🎞️ 크리스털 필름 파편</b><br>가까이 다가가서 수집하세요!");
+                }
+                
+                marker.on('click', function() {
+                    if (isAdminMode) {
+                        if (confirm("🗑️ 이 필름 조각을 삭제하시겠습니까?")) {
+                            db.collection("admin_films").doc(film.id).delete();
+                        }
+                    } else {
+                        let dist = getDistanceFromLatLonInMeters(currentLat, currentLon, film.lat, film.lon);
+                        if (dist <= 40) {
+                            collectFilmFragment(1);
+                            alert("💎 크리스털 필름 파편 1개를 수집했습니다!");
+                            db.collection("admin_films").doc(film.id).delete();
+                        } else {
+                            alert("너무 멀리 있습니다! 필름 조각 가까이 다가가세요. (40m 이내)");
+                        }
+                    }
+                });
+
+                filmMarkers[film.id] = marker;
+                markersGroup.addLayer(marker);
+            });
+            // 디버그 테스트: Firestore에 실제 데이터가 없어도 오브제 표시 여부를 확인할 수 있도록
+            // URL에 ?debug=films 가 있을 때만 임시 테스트 마커를 지도 중심 부근에 표시합니다.
+            // 이 마커들은 Firestore에 저장되지 않으며 실제 수집 데이터에도 영향을 주지 않습니다.
+            if (filmDebugMode) {
+                const center = map.getCenter();
+                if (Object.keys(filmMarkers).length === 0) {
+                    const testFilmIcon = getFilmMarkerIcon(crystalShardData(), map.getZoom());
+                    const testFilm = L.marker([center.lat + 0.0012, center.lng - 0.0015], {icon: testFilmIcon});
+                    testFilm.bindPopup("<b>테스트용 필름 조각</b><br>화면 표시 확인용 임시 오브제입니다.");
+                    markersGroup.addLayer(testFilm);
+                }
+                if (Object.keys(capsuleMarkers).length === 0) {
+                    const testCapsuleImage = capsuleMarkerData("modern");
+                    const testCapsuleIcon = getCapsuleMarkerIcon(testCapsuleImage, false, map.getZoom());
+                    const testCapsule = L.marker([center.lat - 0.0012, center.lng + 0.0015], {icon: testCapsuleIcon});
+                    testCapsule.bindPopup("<b>테스트용 타임캡슐</b><br>화면 표시 확인용 임시 오브제입니다.");
+                    markersGroup.addLayer(testCapsule);
+                }
+            }
+
+            // 단일 MapLibre 마커 렌더러: Three.js 오브제 레이어는 사용하지 않습니다.
+            if (filmDebugMode) {
+                const validCount = Object.keys(filmMarkers).length;
+                const capsuleCount = Object.keys(capsuleMarkers).length;
+                const attachedCount = markersGroup.items ? markersGroup.items.length : -1;
+                showFilmDiagnostic(`Firestore 필름 ${cachedFilms.length}개\n필름 마커 생성 ${validCount}개\n타임캡슐 마커 생성 ${capsuleCount}개\n지도 등록 마커 ${attachedCount}개`);
+            }
+        }
 
         let lastLat = null;
         let lastLon = null;
@@ -1439,13 +1373,6 @@
             const clickLat = Number(e?.lngLat?.lat ?? e?.latlng?.lat);
             const clickLon = Number(e?.lngLat?.lng ?? e?.latlng?.lng);
 
-            if (visualAssetReadOnly) {
-                if (isBulkFilmMode) {
-                    isBulkFilmMode = false;
-                    showFilmPlacementStatus('시각 에셋 테스트는 읽기 전용입니다. 지도/Firestore 데이터는 변경하지 않습니다.');
-                }
-                return;
-            }
             if (isBulkFilmMode) {
                 if (!isAdminMode) {
                     isBulkFilmMode = false;
@@ -1517,7 +1444,6 @@
         }
 
         async function resetAllFilmData() {
-            if (visualAssetReadOnly) { alert('시각 에셋 테스트에서는 초기화가 비활성화되어 있습니다.'); return; }
             if (!isAdminMode) {
                 alert('관리자 모드에서만 실행할 수 있습니다.');
                 return;
@@ -1681,7 +1607,6 @@
         }
 
         function startMission() {
-            if (visualAssetReadOnly) { alert('시각 에셋 테스트에서는 타임캡슐 개봉/자원 차감이 비활성화되어 있습니다.'); return; }
             if (!activeCapsule) {
                 alert("먼저 타임캡슐 발견 지점에 도착해주세요.");
                 return;
@@ -1845,7 +1770,6 @@
         }
 
         function processAndSaveCapsule() {
-            if (visualAssetReadOnly) { alert('시각 에셋 테스트에서는 캡슐 등록/수정이 비활성화되어 있습니다.'); return; }
             let editId = document.getElementById('edit-capsule-id').value;
             let title = document.getElementById('admin-title').value.trim();
             let region = document.getElementById('admin-region').value.trim() || "광명동";
@@ -1902,7 +1826,6 @@
         }
 
         function saveCapsuleData(editId, title, region, desc, imageUrl, lat, lon, capsuleType, photoYear) {
-            if (visualAssetReadOnly) { alert('시각 에셋 테스트에서는 Firestore 저장이 비활성화되어 있습니다.'); return; }
             let capsuleData = {
                 title: title,
                 capsuleType: capsuleType || "modern",
@@ -1931,7 +1854,6 @@
         }
 
         function deleteCapsule(id) {
-            if (visualAssetReadOnly) { alert('시각 에셋 테스트에서는 캡슐 삭제가 비활성화되어 있습니다.'); return; }
             if (confirm("정말 이 타임캡슐을 삭제하시겠습니까?")) {
                 db.collection("capsules").doc(id).delete().then(() => {
                     renderAdminList();
