@@ -251,17 +251,32 @@
         .capsule-ring { position:absolute; top:46px; width:24px; height:160px; border:5px solid #c9f8ff; border-radius:50%;
             box-shadow:0 0 16px rgba(89,220,255,.8); z-index:4; }
         .ring-left { left:15%; }.ring-right { right:15%; }
-        .capsule-insert-film { position:absolute; z-index:5; left:-10%; top:96px; width:120%; height:52px; opacity:0;
-            transform:translateX(-30%); filter:drop-shadow(0 0 10px #65dfff); }
-        .capsule-insert-film img { width:100%; height:100%; object-fit:contain; }
+        .capsule-insert-film { position:absolute; z-index:5; left:0; top:91px; width:100%; height:62px; opacity:1; pointer-events:none; }
+        .capsule-film-token { position:absolute; top:0; width:31%; height:58px; object-fit:contain;
+            opacity:0; filter:drop-shadow(0 0 9px #65dfff); }
+        .capsule-film-token.token-1 { left:0; --dx:34vw; --dy:-44px; --rot:-18deg; }
+        .capsule-film-token.token-2 { left:17%; --dx:17vw; --dy:-65px; --rot:12deg; }
+        .capsule-film-token.token-3 { left:34.5%; --dx:0vw; --dy:-74px; --rot:0deg; }
+        .capsule-film-token.token-4 { left:52%; --dx:-17vw; --dy:-65px; --rot:-12deg; }
+        .capsule-film-token.token-5 { left:69%; --dx:-34vw; --dy:-44px; --rot:18deg; }
         .capsule-energy { position:absolute; left:50%; top:50%; width:20px; height:20px; border-radius:50%;
             background:#fff; opacity:0; transform:translate(-50%,-50%); box-shadow:0 0 35px 25px #65dfff,0 0 90px 55px #775dff; }
-        #time-capsule-opening.is-opening .capsule-insert-film { animation:film-insert 1.25s ease-in-out .35s forwards; }
-        #time-capsule-opening.is-opening .capsule-inner-film { animation:inner-film-light .8s ease-out 1.45s forwards; }
-        #time-capsule-opening.is-opening .capsule-core { animation:capsule-core-on .9s ease-out 1.45s forwards; }
-        #time-capsule-opening.is-opening .capsule-energy { animation:capsule-energy-burst 1s ease-out 1.9s forwards; }
+        #time-capsule-opening.is-opening .capsule-film-token { animation:five-films-converge 1.45s cubic-bezier(.18,.78,.22,1) forwards; }
+        #time-capsule-opening.is-opening .token-1 { animation-delay:.15s; }
+        #time-capsule-opening.is-opening .token-2 { animation-delay:.27s; }
+        #time-capsule-opening.is-opening .token-3 { animation-delay:.39s; }
+        #time-capsule-opening.is-opening .token-4 { animation-delay:.51s; }
+        #time-capsule-opening.is-opening .token-5 { animation-delay:.63s; }
+        #time-capsule-opening.is-opening .capsule-inner-film { animation:inner-film-light .8s ease-out 2.15s forwards; }
+        #time-capsule-opening.is-opening .capsule-core { animation:capsule-core-on .9s ease-out 2.15s forwards; }
+        #time-capsule-opening.is-opening .capsule-energy { animation:capsule-energy-burst 1s ease-out 2.55s forwards; }
         @keyframes capsule-device-arrive { 0%{transform:perspective(900px) rotateY(-24deg) scale(.72);opacity:0} 35%{opacity:1} 100%{transform:perspective(900px) rotateY(0) scale(1);opacity:1} }
-        @keyframes film-insert { 0%{opacity:0;transform:translateX(-30%)} 20%{opacity:1} 80%{opacity:1;transform:translateX(0)} 100%{opacity:0;transform:translateX(30%)} }
+        @keyframes five-films-converge {
+            0% { opacity:0; transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.72); }
+            18% { opacity:1; }
+            72% { opacity:1; transform:translate(0,0) rotate(0) scale(.72); }
+            100% { opacity:0; transform:translate(0,8px) scale(.18); }
+        }
         @keyframes inner-film-light { to{opacity:.9;filter:brightness(1.8)} }
         @keyframes capsule-core-on { to{opacity:1;transform:scale(1.25)} }
         @keyframes capsule-energy-burst { 0%{opacity:0;transform:translate(-50%,-50%) scale(.2)} 35%{opacity:1} 100%{opacity:0;transform:translate(-50%,-50%) scale(8)} }
@@ -338,7 +353,7 @@
     <!-- 상단 상태바 -->
     <div class="top-panel">
         <span>✧ 파편 <span id="fragment-count" class="fragment-badge">0</span>/5</span>
-        <span>🎞 완성 필름 <span id="completed-film-count" class="completed-badge">15</span>/10</span>
+        <span>🎞 완성 필름 <span id="completed-film-count" class="completed-badge">15</span>/5</span>
         <span>👣 <span id="step-count" class="step-badge">0</span></span>
         <button class="action-btn" onclick="openAlbum()">사진첩(도감)</button>
         <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">타임캡슐 등록</button>
@@ -359,8 +374,8 @@
     <div id="discovery-modal" class="modal">
         <h3 id="discovery-title">⏳ 타임캡슐 발견!</h3>
         <p id="discovery-desc">추억의 옛 풍경이 담긴 타임캡슐입니다.</p>
-        <p style="font-size: 13px; color: #666;">필요 자원: 완성된 크리스털 필름 10개</p>
-        <button class="btn" onclick="startMission()">완성 필름 10개로 타임캡슐 개봉하기</button>
+        <p style="font-size: 13px; color: #666;">필요 자원: 완성된 크리스털 필름 5개</p>
+        <button class="btn" onclick="startMission()">완성 필름 5개를 모아 타임캡슐 열기</button>
         <button class="btn btn-secondary" onclick="closeModal('discovery-modal')">나중에 하기</button>
     </div>
 
@@ -385,10 +400,16 @@
             </div>
             <div class="capsule-ring ring-left"></div>
             <div class="capsule-ring ring-right"></div>
-            <div class="capsule-insert-film"><img src="" alt="타임캡슐에 삽입되는 완성 필름"></div>
+            <div class="capsule-insert-film" aria-label="완성 필름 다섯 개가 모여 타임캡슐로 들어갑니다">
+                <img class="capsule-film-token token-1" src="" alt="">
+                <img class="capsule-film-token token-2" src="" alt="">
+                <img class="capsule-film-token token-3" src="" alt="">
+                <img class="capsule-film-token token-4" src="" alt="">
+                <img class="capsule-film-token token-5" src="" alt="">
+            </div>
             <div class="capsule-energy"></div>
         </div>
-        <div class="capsule-opening-caption">완성된 필름 10개가 결합됩니다 · 타임캡슐 작동</div>
+        <div class="capsule-opening-caption">완성 필름 5개가 모여 타임캡슐을 엽니다</div>
     </div>
 
     <!-- 2. 미니게임 (먼지 닦기) 팝업 -->
@@ -1642,15 +1663,15 @@
             const overlay = document.getElementById('time-capsule-opening');
             if (!overlay) { if (typeof onComplete === 'function') onComplete(); return; }
             overlay.classList.remove('is-opening');
-            const filmImg = overlay.querySelector('.capsule-insert-film img');
-            if (filmImg) filmImg.src = completedFilmData();
+            const filmImages = overlay.querySelectorAll('.capsule-film-token');
+            filmImages.forEach(img => { img.src = completedFilmData(); });
             overlay.style.display = 'flex';
             requestAnimationFrame(() => overlay.classList.add('is-opening'));
             window.setTimeout(() => {
                 overlay.classList.remove('is-opening');
                 overlay.style.display = 'none';
                 if (typeof onComplete === 'function') onComplete();
-            }, 3200);
+            }, 4700);
         }
 
         function startMission() {
@@ -1663,11 +1684,11 @@
                 closeModal('discovery-modal');
                 return;
             }
-            if (completedFilms < 10) {
-                alert(`완성된 크리스털 필름이 부족합니다. (현재 ${completedFilms}개 / 필요 10개)`);
+            if (completedFilms < 5) {
+                alert(`완성된 크리스털 필름이 부족합니다. (현재 ${completedFilms}개 / 필요 5개)`);
                 return;
             }
-            completedFilms -= 10;
+            completedFilms -= 5;
             updateResourceDisplay();
             saveUserData();
 
