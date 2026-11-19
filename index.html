@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>광명시 시간캡슐 - D+F+E 디자인 1차</title>
+    <title>광명시 시간캡슐 - PNG 및 지도 마커 고정 수정 v18</title>
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" />
     
 
@@ -333,7 +333,7 @@
         <button id="admin-mode-btn" class="action-btn admin-btn" onclick="openAdminModal()">타임캡슐 등록</button>
         <button id="admin-bulk-btn" class="action-btn bulk-btn" onclick="toggleBulkFilmMode()">필름 연속 배치: OFF</button>
         <button id="admin-reset-films-btn" class="action-btn" style="display:none;background:#8b2635;color:#fff;border:1px solid #ff9aa8" onclick="resetAllFilmData()">기존 필름 전체 초기화</button>
-        <button id="admin-list-btn" class="action-btn list-btn" onclick="openAdminListModal()">오브제 관리</button>
+        <button id="admin-list-btn" class="action-btn list-btn" onclick="openAdminListModal()">캡슐 목록</button>
     </div>
 
     <!-- 하단 가이드 배너 -->
@@ -456,8 +456,6 @@
     <div id="admin-list-modal" class="modal" style="max-width: 380px;">
         <h3>📂 등록된 캡슐 목록</h3>
         <div id="admin-capsule-list" class="scroll-list"></div>
-        <h3 style="margin-top:16px">🎞 필름 조각 관리</h3>
-        <div id="admin-film-list" class="scroll-list"></div>
         <button class="btn btn-secondary" onclick="closeModal('admin-list-modal')" style="margin-top: 10px; padding: 10px;">닫기</button>
     </div>
 
@@ -541,13 +539,14 @@
                 this.popupHTML = '';
                 this.element = document.createElement('div');
                 const icon = options.icon || {};
-                this.element.className = icon.className || 'maplibre-compat-marker';
+                // MapLibre가 좌표 transform을 관리할 수 있도록 기본 마커 클래스를 유지합니다.
+                this.element.className = 'maplibregl-marker ' + (icon.className || '');
                 this.element.innerHTML = icon.html || '';
                 const size = icon.iconSize || [32, 40];
                 const anchor = icon.iconAnchor || [size[0]/2, size[1]];
                 this.element.style.width = size[0] + 'px';
                 this.element.style.height = size[1] + 'px';
-                this.element.style.position = 'relative';
+                // position은 직접 지정하지 않고 MapLibre의 기본 absolute positioning을 사용합니다.
                 this.element.style.cursor = 'pointer';
                 this.marker = new maplibregl.Marker({
                     element: this.element,
@@ -589,7 +588,8 @@
                 return this;
             }
             setIcon(icon) {
-                this.element.className = icon.className || '';
+                // 줌 변경 때에도 MapLibre의 필수 marker 클래스를 보존합니다.
+                this.element.className = 'maplibregl-marker ' + (icon.className || '');
                 this.element.innerHTML = icon.html || '';
                 const size = icon.iconSize || [32,40];
                 const anchor = icon.iconAnchor || [size[0]/2,size[1]];
@@ -845,7 +845,7 @@
         });
         function syncFilm3DModels() { /* 비활성화: 단일 지도 마커 렌더러 사용 */ }
 
-        // GitHub에 이미 업로드된 원본 에셋을 직접 사용합니다.
+        // GitHub 저장소에 실제 업로드된 PNG 원본을 사용합니다.
         const GAME_ASSETS = {
             filmFragments: [
                 './assets/film/film_fragment_01.png',
@@ -861,11 +861,15 @@
             capsules: {
                 modern: './assets/capsule/capsule_01_modern.png',
                 'mid-era': './assets/capsule/capsule_02_mid-era.png',
-                middle: './assets/capsule/capsule_02_mid-era.png',
                 old: './assets/capsule/capsule_03_old.png',
                 ancient: './assets/capsule/capsule_04_ancient.png'
             }
         };
+
+        function crystalFallbackData(kind = 'film') {
+            // PNG가 로드되지 않으면 임의의 다른 모양으로 대체하지 않습니다.
+            return '';
+        }
 
         function capsuleMarkerData(capsuleType = 'modern') {
             return GAME_ASSETS.capsules[capsuleType] || GAME_ASSETS.capsules.modern;
@@ -874,11 +878,12 @@
         function crystalShardData(filmId = '') {
             const id = String(filmId || 'film');
             let hash = 0;
-            for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+            for (let i = 0; i < id.length; i++) {
+                hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+            }
             return GAME_ASSETS.filmFragments[hash % GAME_ASSETS.filmFragments.length];
         }
 
-        // 완성 필름 애니메이션에도 GitHub 원본 에셋을 사용합니다.
         function completedFilmData() {
             return GAME_ASSETS.completedFilm;
         }
@@ -1065,7 +1070,7 @@
             return L.divIcon({
                 className: 'crystal-film-marker',
                 html: `<div class="film-marker-art" style="width:${width}px;height:${height}px">
-                    <img src="${shardImage}" alt="필름 조각" onerror="this.onerror=null;this.style.display='none';console.error('필름 에셋 로드 실패:', this.src)">
+                    <img src="${shardImage}" alt="크리스털 필름 파편" onerror="this.onerror=null;this.style.display=\'none\';console.error(\'필름 PNG 로드 실패:\', this.src)">
                     <span class="film-marker-ground"></span>
                 </div>`,
                 iconSize: [width, height],
@@ -1081,7 +1086,7 @@
             return L.divIcon({
                 className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
                 html: `<div class="capsule-marker-art" style="width:${width}px;height:${height}px">
-                    <img src="${capsuleImage}" alt="타임캡슐" style="left:${Math.round(4*scale)}px;width:${Math.round(48*scale)}px;height:${Math.round(68*scale)}px" onerror="this.onerror=null;this.style.display='none';console.error('타임캡슐 에셋 로드 실패:', this.src)">
+                    <img src="${capsuleImage}" alt="타임캡슐" style="left:${Math.round(4*scale)}px;width:${Math.round(48*scale)}px;height:${Math.round(68*scale)}px" onerror="this.onerror=null;this.style.display=\'none\';console.error(\'타임캡슐 PNG 로드 실패:\', this.src)">
                     <span class="capsule-marker-ground" style="width:${Math.round(36*scale)}px;height:${Math.max(5,Math.round(9*scale))}px"></span>
                 </div>`,
                 iconSize: [width, height],
@@ -1165,13 +1170,16 @@
                 marker._filmShardImage = shardImage;
                 
                 if (isAdminMode) {
-                    marker.bindPopup("<b>🛠️ [관리자] 필름 조각</b><br>클릭하여 위치 수정 또는 삭제");
+                    marker.bindPopup("<b>🛠️ [관리자] 필름 조각</b><br>클릭하면 이 필름이 삭제됩니다.");
                 } else {
-                    marker.bindPopup("<b>🎞️ 필름 조각</b><br>가까이 다가가서 수집하세요!");
+                    marker.bindPopup("<b>🎞️ 크리스털 필름 파편</b><br>가까이 다가가서 수집하세요!");
                 }
+                
                 marker.on('click', function() {
                     if (isAdminMode) {
-                        openFilmAdminActions(film.id);
+                        if (confirm("🗑️ 이 필름 조각을 삭제하시겠습니까?")) {
+                            db.collection("admin_films").doc(film.id).delete();
+                        }
                     } else {
                         let dist = getDistanceFromLatLonInMeters(currentLat, currentLon, film.lat, film.lon);
                         if (dist <= 40) {
@@ -1187,6 +1195,26 @@
                 filmMarkers[film.id] = marker;
                 markersGroup.addLayer(marker);
             });
+            // 디버그 테스트: Firestore에 실제 데이터가 없어도 오브제 표시 여부를 확인할 수 있도록
+            // URL에 ?debug=films 가 있을 때만 임시 테스트 마커를 지도 중심 부근에 표시합니다.
+            // 이 마커들은 Firestore에 저장되지 않으며 실제 수집 데이터에도 영향을 주지 않습니다.
+            if (filmDebugMode) {
+                const center = map.getCenter();
+                if (Object.keys(filmMarkers).length === 0) {
+                    const testFilmIcon = getFilmMarkerIcon(crystalShardData(), map.getZoom());
+                    const testFilm = L.marker([center.lat + 0.0012, center.lng - 0.0015], {icon: testFilmIcon});
+                    testFilm.bindPopup("<b>테스트용 필름 조각</b><br>화면 표시 확인용 임시 오브제입니다.");
+                    markersGroup.addLayer(testFilm);
+                }
+                if (Object.keys(capsuleMarkers).length === 0) {
+                    const testCapsuleImage = capsuleMarkerData("modern");
+                    const testCapsuleIcon = getCapsuleMarkerIcon(testCapsuleImage, false, map.getZoom());
+                    const testCapsule = L.marker([center.lat - 0.0012, center.lng + 0.0015], {icon: testCapsuleIcon});
+                    testCapsule.bindPopup("<b>테스트용 타임캡슐</b><br>화면 표시 확인용 임시 오브제입니다.");
+                    markersGroup.addLayer(testCapsule);
+                }
+            }
+
             // 단일 MapLibre 마커 렌더러: Three.js 오브제 레이어는 사용하지 않습니다.
             if (filmDebugMode) {
                 const validCount = Object.keys(filmMarkers).length;
@@ -1629,113 +1657,26 @@
         }
 
         function renderAdminList() {
-            const listDiv = document.getElementById('admin-capsule-list');
-            const filmDiv = document.getElementById('admin-film-list');
+            let listDiv = document.getElementById('admin-capsule-list');
             listDiv.innerHTML = "";
-            filmDiv.innerHTML = "";
+            let capsules = getCapsules();
 
-            const capsules = getCapsules();
             if (capsules.length === 0) {
-                listDiv.innerHTML = "<p style='color:#888;font-size:11px;text-align:center;'>등록된 타임캡슐이 없습니다.</p>";
+                listDiv.innerHTML = "<p style='color:#888; font-size:11px; text-align:center;'>등록된 캡슐이 없습니다.</p>";
             } else {
                 capsules.forEach((cap) => {
-                    const row = document.createElement('div');
-                    row.className = 'list-item';
-                    const img = document.createElement('img');
-                    img.src = cap.url || capsuleMarkerData(cap.capsuleType || 'modern');
-                    img.alt = '타임캡슐';
-                    const info = document.createElement('div');
-                    info.style.cssText = 'flex-grow:1;margin-left:6px;overflow:hidden;';
-                    const title = document.createElement('div');
-                    title.style.cssText = 'font-weight:bold;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-                    title.textContent = `[${cap.region || '기타'}] ${cap.title || '타임캡슐'}`;
-                    const coords = document.createElement('div');
-                    coords.style.cssText = 'font-size:9px;color:#777;';
-                    coords.textContent = `${Number(cap.lat).toFixed(5)}, ${Number(cap.lon).toFixed(5)}`;
-                    info.append(title, coords);
-                    const edit = document.createElement('button');
-                    edit.className = 'btn btn-edit';
-                    edit.textContent = '수정';
-                    edit.onclick = () => { closeModal('admin-list-modal'); editCapsule(cap.id); };
-                    const del = document.createElement('button');
-                    del.className = 'btn btn-danger';
-                    del.textContent = '삭제';
-                    del.onclick = () => deleteCapsule(cap.id);
-                    row.append(img, info, edit, del);
-                    listDiv.appendChild(row);
+                    listDiv.innerHTML += `
+                        <div class="list-item">
+                            <img src="${cap.url}" alt="미리보기">
+                            <div style="flex-grow:1; margin-left:6px; overflow:hidden;">
+                                <div style="font-weight:bold; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">[${cap.region || '기타'}] ${cap.title}</div>
+                            </div>
+                            <button class="btn btn-edit" onclick="closeModal('admin-list-modal'); editCapsule('${cap.id}')">수정</button>
+                            <button class="btn btn-danger" onclick="deleteCapsule('${cap.id}')">삭제</button>
+                        </div>
+                    `;
                 });
             }
-
-            if (!cachedFilms.length) {
-                filmDiv.innerHTML = "<p style='color:#888;font-size:11px;text-align:center;'>등록된 필름 조각이 없습니다. '필름 연속 배치'를 켜고 지도에 심어주세요.</p>";
-            } else {
-                cachedFilms.forEach((film) => {
-                    const row = document.createElement('div');
-                    row.className = 'list-item';
-                    const img = document.createElement('img');
-                    img.src = crystalShardData(film.id);
-                    img.alt = '필름 조각';
-                    const info = document.createElement('div');
-                    info.style.cssText = 'flex-grow:1;margin-left:6px;overflow:hidden;';
-                    const title = document.createElement('div');
-                    title.style.cssText = 'font-weight:bold;font-size:11px;';
-                    title.textContent = `필름 조각 · ${film.id}`;
-                    const coords = document.createElement('div');
-                    coords.style.cssText = 'font-size:9px;color:#777;';
-                    coords.textContent = `${Number(film.lat).toFixed(5)}, ${Number(film.lon).toFixed(5)}`;
-                    info.append(title, coords);
-                    const edit = document.createElement('button');
-                    edit.className = 'btn btn-edit';
-                    edit.textContent = '수정';
-                    edit.onclick = () => openFilmAdminActions(film.id, 'edit');
-                    const del = document.createElement('button');
-                    del.className = 'btn btn-danger';
-                    del.textContent = '삭제';
-                    del.onclick = () => deleteFilmById(film.id);
-                    row.append(img, info, edit, del);
-                    filmDiv.appendChild(row);
-                });
-            }
-        }
-
-        function openFilmAdminActions(id, preferredAction) {
-            if (!isAdminMode) return;
-            const film = cachedFilms.find(item => item.id === id);
-            if (!film) return;
-            const action = preferredAction || prompt(
-                `필름 조각 관리\nID: ${id}\n현재 위치: ${Number(film.lat).toFixed(6)}, ${Number(film.lon).toFixed(6)}\n\n1 = 위치 수정\n2 = 삭제\n취소 = 돌아가기`,
-                '1'
-            );
-            if (action === null) return;
-            if (action === '2' || action === 'delete') {
-                deleteFilmById(id);
-                return;
-            }
-            if (action !== '1' && action !== 'edit') return;
-
-            const latText = prompt('새 위도(latitude)를 입력하세요.', String(film.lat));
-            if (latText === null) return;
-            const lonText = prompt('새 경도(longitude)를 입력하세요.', String(film.lon));
-            if (lonText === null) return;
-            const lat = Number(latText), lon = Number(lonText);
-            if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-                alert('위도 또는 경도 값이 올바르지 않습니다.');
-                return;
-            }
-            db.collection('admin_films').doc(id).update({
-                lat, lon, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                alert('필름 조각 위치를 수정했습니다.');
-                renderAdminList();
-            }).catch(error => alert('필름 조각 수정 실패: ' + (error.message || error)));
-        }
-
-        function deleteFilmById(id) {
-            if (!isAdminMode) return;
-            if (!confirm('이 필름 조각을 삭제하시겠습니까?')) return;
-            db.collection('admin_films').doc(id).delete()
-                .then(() => renderAdminList())
-                .catch(error => alert('필름 조각 삭제 실패: ' + (error.message || error)));
         }
 
         function editCapsule(id) {
