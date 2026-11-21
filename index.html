@@ -128,11 +128,11 @@
             border: 0 !important;
         }
         .capsule-marker-art {
-            position:relative; width:56px; height:76px; overflow:visible;
+            position:relative; width:46px; height:62px; overflow:visible;
         }
         .capsule-marker-art img {
             position:absolute; left:4px; top:0;
-            width:48px; height:68px; object-fit:contain; display:block;
+            width:40px; height:56px; object-fit:contain; display:block;
             transform:translateY(3px);
             filter:drop-shadow(0 2px 3px rgba(16,35,80,.28));
             transform-origin:50% 92%;
@@ -151,9 +151,9 @@
 
         .crystal-film-marker { background: transparent !important; border: 0 !important; }
         /* 필름 조각 이미지를 숨기지 않고 정상 표시합니다. */
-        .film-marker-art { position:relative; width:58px; height:38px; overflow:visible; }
+        .film-marker-art { position:relative; width:46px; height:30px; overflow:visible; }
         .film-marker-art img {
-            position:absolute; left:50%; top:0; width:46px; height:30px;
+            position:absolute; left:50%; top:0; width:38px; height:25px;
             object-fit:contain; display:block; opacity:1 !important; visibility:visible; z-index:2; transform:translateX(-50%);
             filter:drop-shadow(0 0 5px rgba(82,220,255,.9)) drop-shadow(0 0 9px rgba(164,95,255,.5));
             animation:shard-hover 2.8s ease-in-out infinite;
@@ -172,20 +172,27 @@
         }
         /* 빛의 탐사자 GPS 캐릭터 */
         .light-explorer-marker { background:transparent !important; border:0 !important; z-index:30 !important; }
-        .light-explorer-wrap { position:relative; width:68px; height:104px; overflow:visible; pointer-events:none; }
+        .light-explorer-wrap { position:relative; width:48px; height:74px; overflow:visible; pointer-events:none; }
         .light-explorer-sprite {
-            position:absolute; left:0; bottom:7px; width:68px; height:96px;
+            position:absolute; left:0; bottom:5px; width:48px; height:68px;
             object-fit:contain; transform-origin:50% 88%;
             filter:drop-shadow(0 0 4px rgba(105,205,255,.9)) drop-shadow(0 0 9px rgba(111,135,255,.55));
             user-select:none; -webkit-user-drag:none;
         }
         .light-explorer-ground {
-            position:absolute; left:50%; bottom:1px; width:42px; height:10px;
+            position:absolute; left:50%; bottom:1px; width:30px; height:7px;
             transform:translateX(-50%); border:1.5px solid rgba(92,220,255,.9);
             border-radius:50%; background:radial-gradient(ellipse,rgba(48,175,255,.38),rgba(35,83,180,.12) 62%,transparent 78%);
             box-shadow:0 0 8px rgba(54,190,255,.62), inset 0 0 5px rgba(110,220,255,.42);
         }
         .light-explorer-wrap.is-walking .light-explorer-ground { animation: explorer-pulse .8s ease-in-out infinite alternate; }
+        /* 멀리서 숫자 마커가 보일 때는 캐릭터 대신 작은 푸른 GPS 빛만 표시 */
+        .light-explorer-wrap.is-zoomed-out .light-explorer-sprite { display:none !important; }
+        .light-explorer-wrap.is-zoomed-out .light-explorer-ground {
+            width:20px; height:20px; bottom:0; border:1px solid rgba(120,225,255,.92);
+            border-radius:50%; background:radial-gradient(circle,rgba(175,245,255,.95) 0%,rgba(54,180,255,.62) 32%,rgba(45,100,255,.18) 68%,transparent 76%);
+            box-shadow:0 0 10px rgba(60,190,255,.85),0 0 20px rgba(80,130,255,.42);
+        }
         @keyframes explorer-pulse { from {opacity:.72; transform:translateX(-50%) scale(.94)} to {opacity:1; transform:translateX(-50%) scale(1.08)} }
         .flat-count-marker-wrap { background:transparent !important; border:0 !important; }
         .flat-count-marker {
@@ -1052,9 +1059,9 @@
         // 지도 확대/축소 단계에 맞춰 필름 조각 마커의 실제 픽셀 크기를 조정합니다.
         // 원본 이미지의 가로세로 비율은 object-fit: contain으로 그대로 유지합니다.
         function getFilmMarkerIcon(shardImage, zoomLevel) {
-            const scale = Math.max(0.78, Math.min(1.45, Math.pow(1.10, zoomLevel - 14)));
-            const width = Math.round(58 * scale);
-            const height = Math.round(38 * scale);
+            const scale = Math.max(0.72, Math.min(1.12, Math.pow(1.075, zoomLevel - 14)));
+            const width = Math.round(46 * scale);
+            const height = Math.round(30 * scale);
             return L.divIcon({
                 className: 'crystal-film-marker',
                 html: `<div class="film-marker-art" style="width:${width}px;height:${height}px">
@@ -1068,14 +1075,14 @@
 
         function getCapsuleMarkerIcon(capsuleImage, collected, zoomLevel) {
             // 지도 축척에 맞춰 캡슐도 필름 조각과 함께 커지고 작아집니다.
-            const scale = Math.max(0.58, Math.min(1.65, Math.pow(1.12, zoomLevel - 14)));
-            const width = Math.round(56 * scale);
-            const height = Math.round(76 * scale);
+            const scale = Math.max(0.68, Math.min(1.12, Math.pow(1.075, zoomLevel - 14)));
+            const width = Math.round(46 * scale);
+            const height = Math.round(62 * scale);
             return L.divIcon({
                 className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
                 html: `<div class="capsule-marker-art" style="width:${width}px;height:${height}px">
-                    <img src="${capsuleImage}" alt="타임캡슐" style="left:${Math.round(4*scale)}px;width:${Math.round(48*scale)}px;height:${Math.round(68*scale)}px" onerror="this.onerror=null;this.style.display=\'none\';console.error(\'타임캡슐 PNG 로드 실패:\', this.src)">
-                    <span class="capsule-marker-ground" style="width:${Math.round(36*scale)}px;height:${Math.max(5,Math.round(9*scale))}px"></span>
+                    <img src="${capsuleImage}" alt="타임캡슐" style="left:${Math.round(3*scale)}px;width:${Math.round(40*scale)}px;height:${Math.round(56*scale)}px" onerror="this.onerror=null;this.style.display=\'none\';console.error(\'타임캡슐 PNG 로드 실패:\', this.src)">
+                    <span class="capsule-marker-ground" style="width:${Math.round(30*scale)}px;height:${Math.max(5,Math.round(9*scale))}px"></span>
                 </div>`,
                 iconSize: [width, height],
                 iconAnchor: [width / 2, height - Math.max(1, Math.round(scale))],
@@ -1113,6 +1120,8 @@
         function updateZoomPresentation() {
             if (!map || !markersGroup || !markersGroup.items) return;
             const useNumbers = map.getZoom() <= NUMBER_MARKER_ZOOM;
+            const explorerWrap = document.getElementById('light-explorer-wrap');
+            if (explorerWrap) explorerWrap.classList.toggle('is-zoomed-out', useNumbers);
             const sourceMarkers = markersGroup.items;
 
             if (!useNumbers) {
@@ -1383,11 +1392,12 @@
                         let userIcon = L.divIcon({
                             className: 'light-explorer-marker',
                             html: '<div id="light-explorer-wrap" class="light-explorer-wrap"><span class="light-explorer-ground"></span><img id="light-explorer-sprite" class="light-explorer-sprite" src="./assets/light_explorer/walk_01.png" alt="빛의 탐사자"></div>',
-                            iconSize: [68, 104],
-                            iconAnchor: [34, 103]
+                            iconSize: [48, 74],
+                            iconAnchor: [24, 73]
                         });
 
                         userMarker = L.marker([currentLat, currentLon], {icon: userIcon, zIndexOffset: 1000}).addTo(map).bindPopup("<b>빛의 탐사자 · 내 위치</b>");
+                        updateZoomPresentation();
                         // GPS는 내 위치 마커만 갱신합니다. 지도는 광명시 전체를 볼 수 있도록
                         // 사용자가 직접 이동/확대/축소할 수 있게 자동 중심 이동하지 않습니다.
                         renderAllMarkers();
