@@ -176,7 +176,8 @@
         .light-explorer-sprite {
             position:absolute; left:0; bottom:5px; width:48px; height:68px;
             object-fit:contain; transform-origin:50% 88%;
-            filter:drop-shadow(0 0 4px rgba(105,205,255,.9)) drop-shadow(0 0 9px rgba(111,135,255,.55));
+            filter:none;
+            transition:transform .22s ease;
             user-select:none; -webkit-user-drag:none;
         }
         .light-explorer-ground {
@@ -1328,7 +1329,8 @@
         let explorerWalkTimer = null;
         let explorerWalkStopTimer = null;
         let explorerIsWalking = false;
-        let explorerBearing = 90; // GPS 방위각은 보행 방향 판단에만 사용하며 캐릭터 이미지는 항상 직립합니다.
+        let explorerBearing = 90; // GPS 진행 방위각(북쪽 기준)
+        let explorerFacingFlip = false;
 
         function calculateBearing(lat1, lon1, lat2, lon2) {
             const toRad = value => value * Math.PI / 180;
@@ -1344,9 +1346,8 @@
             if (!img) return;
             const number = String(frame).padStart(2, '0');
             img.src = `./assets/light_explorer/walk_${number}.png`;
-            // 캐릭터는 지도 회전 및 GPS 방위각과 무관하게 화면에서 항상 똑바로 서 있습니다.
-            // 옆으로 눕는 현상을 막기 위해 이미지 자체에는 회전 변환을 적용하지 않습니다.
-            img.style.transform = 'none';
+            // 캐릭터는 항상 직립합니다. 이동 방향은 좌우 반전으로만 표현하고 회전시키지 않습니다.
+            img.style.transform = explorerFacingFlip ? 'scaleX(-1)' : 'scaleX(1)';
         }
 
         function startExplorerWalking() {
@@ -1376,7 +1377,11 @@
         function updateExplorerFromGPS(previousLat, previousLon, nextLat, nextLon, movedMeters, speed) {
             if (movedMeters > 1.2 && previousLat != null && previousLon != null) {
                 explorerBearing = calculateBearing(previousLat, previousLon, nextLat, nextLon);
-                // 방위각은 추후 방향별 프레임 선택에 활용할 수 있지만, 현재 캐릭터는 항상 직립 유지
+                // GPS 방위각을 현재 지도 회전에 맞춰 화면 좌우 방향으로 투영합니다.
+                // 캐릭터는 회전하지 않고 좌우 반전만 하므로 항상 똑바로 서 있습니다.
+                const mapBearing = (typeof map.getBearing === 'function' ? map.getBearing() : 0);
+                const screenBearing = (explorerBearing - mapBearing) * Math.PI / 180;
+                explorerFacingFlip = Math.sin(screenBearing) < 0;
                 setExplorerFrame(explorerFrame);
             }
             if ((Number.isFinite(speed) && speed > 0.45) || movedMeters > 1.2) {
