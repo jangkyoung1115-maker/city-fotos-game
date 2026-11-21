@@ -904,7 +904,7 @@
 
         // 줌 18을 최대 확대, 줌 14부터 숫자 마커로 전환합니다.
         const MAX_MAP_ZOOM = 18;
-        const NUMBER_MARKER_ZOOM = 13.5; // 숫자 마커가 한 단계 더 일찍 나타나도록 조정
+        let NUMBER_MARKER_ZOOM = 13.5; // 실제 첫 화면 줌을 기준으로 + 버튼 두 번까지 숫자 마커 유지
         let zoomNumberMarkers = [];
         
         let currentLat = 37.4784;
@@ -1105,6 +1105,13 @@
                 }
             });
         }
+
+        // 첫 화면에서는 숫자 마커로 시작하고, 확대 버튼을 두 번 누른 뒤 오브제가 나타나도록
+        // 페이지 로딩이 끝난 실제 시작 줌을 기준으로 전환 임계값을 설정합니다.
+        map.once('load', () => {
+            NUMBER_MARKER_ZOOM = Math.min(MAX_MAP_ZOOM - 0.5, map.getZoom() + 1.5);
+            updateZoomPresentation();
+        });
 
         map.on('zoomend', () => {
             updateMapMarkerSizes();
