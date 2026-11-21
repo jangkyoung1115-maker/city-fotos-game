@@ -170,6 +170,23 @@
             0%,100% { transform:translate(-50%,0) rotate(-2deg); }
             50% { transform:translate(-50%,-1px) rotate(2deg); }
         }
+        /* 빛의 탐사자 GPS 캐릭터 */
+        .light-explorer-marker { background:transparent !important; border:0 !important; z-index:30 !important; }
+        .light-explorer-wrap { position:relative; width:68px; height:104px; overflow:visible; pointer-events:none; }
+        .light-explorer-sprite {
+            position:absolute; left:0; bottom:7px; width:68px; height:96px;
+            object-fit:contain; transform-origin:50% 88%;
+            filter:drop-shadow(0 0 4px rgba(105,205,255,.9)) drop-shadow(0 0 9px rgba(111,135,255,.55));
+            user-select:none; -webkit-user-drag:none;
+        }
+        .light-explorer-ground {
+            position:absolute; left:50%; bottom:1px; width:42px; height:10px;
+            transform:translateX(-50%); border:1.5px solid rgba(92,220,255,.9);
+            border-radius:50%; background:radial-gradient(ellipse,rgba(48,175,255,.38),rgba(35,83,180,.12) 62%,transparent 78%);
+            box-shadow:0 0 8px rgba(54,190,255,.62), inset 0 0 5px rgba(110,220,255,.42);
+        }
+        .light-explorer-wrap.is-walking .light-explorer-ground { animation: explorer-pulse .8s ease-in-out infinite alternate; }
+        @keyframes explorer-pulse { from {opacity:.72; transform:translateX(-50%) scale(.94)} to {opacity:1; transform:translateX(-50%) scale(1.08)} }
         .flat-count-marker-wrap { background:transparent !important; border:0 !important; }
         .flat-count-marker {
             width:100%; height:100%; box-sizing:border-box; border-radius:50%;
@@ -880,7 +897,7 @@
 
         // 줌 18을 최대 확대, 줌 14부터 숫자 마커로 전환합니다.
         const MAX_MAP_ZOOM = 18;
-        const NUMBER_MARKER_ZOOM = 14;
+        const NUMBER_MARKER_ZOOM = 12.5; // PC 기본 확대율(12.8)에서도 필름·타임캡슐 PNG가 보이도록 조정
         let zoomNumberMarkers = [];
         
         let currentLat = 37.4784;
@@ -1291,6 +1308,68 @@
 
         let lastLat = null;
         let lastLon = null;
+        let explorerFrame = 1;
+        let explorerWalkTimer = null;
+        let explorerWalkStopTimer = null;
+        let explorerIsWalking = false;
+        let explorerBearing = 90; // GPS 방위각은 보행 방향 판단에만 사용하며 캐릭터 이미지는 항상 직립합니다.
+
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const toRad = value => value * Math.PI / 180;
+            const toDeg = value => value * 180 / Math.PI;
+            const p1 = toRad(lat1), p2 = toRad(lat2), dl = toRad(lon2 - lon1);
+            const y = Math.sin(dl) * Math.cos(p2);
+            const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+            return (toDeg(Math.atan2(y, x)) + 360) % 360;
+        }
+
+        function setExplorerFrame(frame) {
+            const img = document.getElementById('light-explorer-sprite');
+            if (!img) return;
+            const number = String(frame).padStart(2, '0');
+            img.src = `./assets/light_explorer/walk_${number}.png`;
+            // 캐릭터는 지도 회전 및 GPS 방위각과 무관하게 화면에서 항상 똑바로 서 있습니다.
+            // 옆으로 눕는 현상을 막기 위해 이미지 자체에는 회전 변환을 적용하지 않습니다.
+            img.style.transform = 'none';
+        }
+
+        function startExplorerWalking() {
+            const wrap = document.getElementById('light-explorer-wrap');
+            if (wrap) wrap.classList.add('is-walking');
+            if (explorerIsWalking) return;
+            explorerIsWalking = true;
+            explorerFrame = 1;
+            setExplorerFrame(explorerFrame);
+            if (explorerWalkTimer) clearInterval(explorerWalkTimer);
+            explorerWalkTimer = setInterval(() => {
+                explorerFrame = explorerFrame % 8 + 1;
+                setExplorerFrame(explorerFrame);
+            }, 125);
+        }
+
+        function stopExplorerWalking() {
+            if (!explorerIsWalking) return;
+            explorerIsWalking = false;
+            if (explorerWalkTimer) { clearInterval(explorerWalkTimer); explorerWalkTimer = null; }
+            const wrap = document.getElementById('light-explorer-wrap');
+            if (wrap) wrap.classList.remove('is-walking');
+            explorerFrame = 1;
+            setExplorerFrame(1);
+        }
+
+        function updateExplorerFromGPS(previousLat, previousLon, nextLat, nextLon, movedMeters, speed) {
+            if (movedMeters > 1.2 && previousLat != null && previousLon != null) {
+                explorerBearing = calculateBearing(previousLat, previousLon, nextLat, nextLon);
+                // 방위각은 추후 방향별 프레임 선택에 활용할 수 있지만, 현재 캐릭터는 항상 직립 유지
+                setExplorerFrame(explorerFrame);
+            }
+            if ((Number.isFinite(speed) && speed > 0.45) || movedMeters > 1.2) {
+                startExplorerWalking();
+                if (explorerWalkStopTimer) clearTimeout(explorerWalkStopTimer);
+                explorerWalkStopTimer = setTimeout(stopExplorerWalking, 1400);
+            }
+        }
+
 
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
@@ -1302,13 +1381,13 @@
                         isFirstGPS = false;
                         
                         let userIcon = L.divIcon({
-                            className: 'custom-user',
-                            html: '<div style="background:#00c853; width:15px; height:15px; border-radius:50%; border:2px solid white; box-shadow:0 0 6px rgba(0,200,83,0.8);"></div>',
-                            iconSize: [15, 15],
-                            iconAnchor: [7.5, 7.5]
+                            className: 'light-explorer-marker',
+                            html: '<div id="light-explorer-wrap" class="light-explorer-wrap"><span class="light-explorer-ground"></span><img id="light-explorer-sprite" class="light-explorer-sprite" src="./assets/light_explorer/walk_01.png" alt="빛의 탐사자"></div>',
+                            iconSize: [68, 104],
+                            iconAnchor: [34, 103]
                         });
 
-                        userMarker = L.marker([currentLat, currentLon], {icon: userIcon}).addTo(map).bindPopup("<b>내 위치</b>");
+                        userMarker = L.marker([currentLat, currentLon], {icon: userIcon, zIndexOffset: 1000}).addTo(map).bindPopup("<b>빛의 탐사자 · 내 위치</b>");
                         // GPS는 내 위치 마커만 갱신합니다. 지도는 광명시 전체를 볼 수 있도록
                         // 사용자가 직접 이동/확대/축소할 수 있게 자동 중심 이동하지 않습니다.
                         renderAllMarkers();
@@ -1317,6 +1396,7 @@
                         lastLon = currentLon;
                     } else {
                         let movedMeters = getDistanceFromLatLonInMeters(lastLat, lastLon, currentLat, currentLon);
+                        updateExplorerFromGPS(lastLat, lastLon, currentLat, currentLon, movedMeters, position.coords.speed);
                         if (movedMeters > 2) {
                             accumulatedMeters += movedMeters;
                             lastLat = currentLat;
