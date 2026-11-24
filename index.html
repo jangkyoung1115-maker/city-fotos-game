@@ -128,26 +128,37 @@
             border: 0 !important;
         }
         .capsule-marker-art {
-            position:relative; width:46px; height:62px; overflow:visible;
+            position:relative; overflow:visible;
         }
         .capsule-marker-art img {
-            position:absolute; left:4px; top:0;
-            width:40px; height:56px; object-fit:contain; display:block;
-            transform:translateY(3px);
-            filter:drop-shadow(0 2px 3px rgba(16,35,80,.28));
+            position:absolute; left:50%; top:0;
+            object-fit:contain; display:block;
+            transform:translateX(-50%) translateY(2px);
+            filter:drop-shadow(0 0 3px rgba(64,190,255,.24));
             transform-origin:50% 92%;
         }
         .capsule-marker-ground {
-            position:absolute; left:50%; bottom:1px; width:36px; height:9px;
+            position:absolute; left:50%; bottom:1px;
             transform:translateX(-50%);
-            border:1.5px solid rgba(92,220,255,.76);
+            border:1.4px solid rgba(92,220,255,.72);
             border-radius:50%;
-            background:radial-gradient(ellipse,rgba(42,156,224,.22),rgba(7,24,55,.18) 58%,transparent 76%);
-            box-shadow:0 1px 5px rgba(32,174,255,.32);
+            background:radial-gradient(ellipse,rgba(42,156,224,.10),rgba(42,156,224,.035) 58%,transparent 78%);
+            box-shadow:0 0 4px rgba(32,174,255,.22);
         }
-        .crystal-capsule-marker.is-collected .capsule-marker-art img {
-            filter:drop-shadow(0 0 7px rgba(255,220,120,.85)) saturate(1.18);
+        .capsule-collected-trace {
+            position:absolute; left:50%; bottom:2px;
+            transform:translateX(-50%);
+            width:30px; height:12px; border-radius:50%;
+            border:1.5px solid rgba(91,222,255,.82);
+            background:radial-gradient(ellipse,rgba(83,207,255,.28) 0%,rgba(83,207,255,.10) 42%,transparent 76%);
+            box-shadow:0 0 7px rgba(68,194,255,.62), inset 0 0 5px rgba(68,194,255,.26);
+            animation:collected-trace-pulse 2.8s ease-in-out infinite;
         }
+        @keyframes collected-trace-pulse {
+            0%,100% { opacity:.62; transform:translateX(-50%) scale(.94); }
+            50% { opacity:1; transform:translateX(-50%) scale(1.08); }
+        }
+        .crystal-capsule-marker.is-collected .capsule-marker-art img { display:none !important; }
 
         .crystal-film-marker { background: transparent !important; border: 0 !important; }
         /* 필름 조각 이미지를 숨기지 않고 정상 표시합니다. */
@@ -826,17 +837,6 @@
         <div class="lv2-controls"><button type="button" onclick="replayLv2Dissolve()">다시 재생</button><button type="button" onclick="closeLv2Dissolve()">닫기</button></div>
     </div>
 
-    <!-- 2. 미니게임 (먼지 닦기) 팝업 -->
-    <div id="mission-modal" class="modal">
-        <h3>🧹 사진 복원 미니게임</h3>
-        <p style="font-size: 13px; color: #666;">화면을 문질러 세월의 먼지를 닦아내세요!</p>
-        <div id="scratch-box" ontouchmove="wipeDust()" onclick="wipeDust()">
-            <img src="" id="target-photo" alt="옛 사진" onclick="openCapsulePhotoDetail()" title="사진 크게 보기" style="cursor:zoom-in;">
-            <div id="overlay-text" class="scratch-overlay">여기를 터치해 먼지 닦기!</div>
-        </div>
-        <button id="complete-btn" class="btn btn-secondary" disabled onclick="savePhoto()">사진첩에 저장하기</button>
-    </div>
-
     <!-- 3. 100개 슬롯 도감 모달 & 칭호 시스템 -->
     <div id="album-modal" class="modal" style="max-width: 440px;">
         <h3>📖 광명시 타임슬립 100선 도감</h3>
@@ -862,6 +862,7 @@
             <span id="memory-carousel-count">1 / 1</span>
             <button id="memory-next" type="button" onclick="moveMemoryPhoto(1)">다음 사진 ›</button>
         </div>
+        <button id="detail-save-album-btn" class="btn" style="background: #1687d9; margin-top: 8px; padding: 10px; font-size: 13px; display:none;" onclick="saveOpenedCapsuleToAlbum()">📚 사진첩에 저장</button>
         <button class="btn" style="background: #4caf50; margin-top: 8px; padding: 10px; font-size: 13px;" onclick="downloadPhoto()">📥 사진 원본 다운로드</button>
         <button class="btn btn-secondary" onclick="closeModal('photo-detail-modal')" style="margin-top: 5px; padding: 8px;">닫기</button>
     </div>
@@ -1785,6 +1786,30 @@
             return JSON.parse(localStorage.getItem('gwangmyeong_album') || '[]');
         }
 
+        // 개봉 완료 기록은 사진첩 저장 여부와 별도로 보관합니다.
+        // 수집된 타임캡슐은 지도에서 오브제가 사라지고 빛의 흔적만 남습니다.
+        function getCollectedCapsuleRecords() {
+            try { return JSON.parse(localStorage.getItem('gwangmyeong_collected_capsules') || '[]'); }
+            catch (e) { console.warn('수집 타임캡슐 기록을 읽지 못했습니다.', e); return []; }
+        }
+        function isCapsuleCollected(capsuleId) {
+            return getCollectedCapsuleRecords().some(item => item && item.id === capsuleId);
+        }
+        function saveCollectedCapsuleRecord(capsule) {
+            if (!capsule || !capsule.id) return;
+            const records = getCollectedCapsuleRecords();
+            if (!records.some(item => item.id === capsule.id)) {
+                records.push({
+                    id: capsule.id, title: capsule.title || '광명의 기억',
+                    region: capsule.region || '', photoYear: capsule.photoYear || '',
+                    desc: capsule.desc || '', url: resolveCapsulePhotoUrl(capsule),
+                    capsuleLevel: capsule.capsuleLevel === 'lv2' ? 'lv2' : 'lv1',
+                    collectedAt: new Date().toISOString()
+                });
+                localStorage.setItem('gwangmyeong_collected_capsules', JSON.stringify(records));
+            }
+        }
+
         function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
             var R = 6371000;
             var dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -1814,20 +1839,28 @@
             });
         }
 
-        function getCapsuleMarkerIcon(capsuleImage, collected, zoomLevel) {
-            // 지도 축척에 맞춰 캡슐도 필름 조각과 함께 커지고 작아집니다.
+        function getCapsuleMarkerIcon(capsuleImage, collected, zoomLevel, capsuleLevel = 'lv1') {
             const scale = Math.max(0.68, Math.min(1.12, Math.pow(1.075, zoomLevel - 14)));
-            const width = Math.round(46 * scale);
-            const height = Math.round(62 * scale);
+            // LV.1은 지도에서 조금 작게, 구조가 큰 LV.2는 조금 크게 표시합니다.
+            const isLv2 = capsuleLevel === 'lv2';
+            const objectWidth = Math.round((isLv2 ? 49 : 32) * scale);
+            const objectHeight = Math.round((isLv2 ? 66 : 45) * scale);
+            const width = Math.round((isLv2 ? 56 : 40) * scale);
+            const height = Math.round((isLv2 ? 72 : 52) * scale);
+            const groundWidth = Math.round((isLv2 ? 43 : 27) * scale);
+            const groundHeight = Math.max(5, Math.round((isLv2 ? 8 : 6) * scale));
+            const inner = collected
+                ? `<span class="capsule-collected-trace"></span>`
+                : `<img src="${capsuleImage}" alt="${isLv2 ? 'LV.2' : 'LV.1'} 타임캡슐"
+                    style="width:${objectWidth}px;height:${objectHeight}px"
+                    onerror="this.onerror=null;this.style.display='none';console.error('타임캡슐 PNG 로드 실패:', this.src)">
+                   <span class="capsule-marker-ground" style="width:${groundWidth}px;height:${groundHeight}px"></span>`;
             return L.divIcon({
                 className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
-                html: `<div class="capsule-marker-art" style="width:${width}px;height:${height}px">
-                    <img src="${capsuleImage}" alt="타임캡슐" style="left:${Math.round(3*scale)}px;width:${Math.round(40*scale)}px;height:${Math.round(56*scale)}px" onerror="this.onerror=null;this.style.display=\'none\';console.error(\'타임캡슐 PNG 로드 실패:\', this.src)">
-                    <span class="capsule-marker-ground" style="width:${Math.round(30*scale)}px;height:${Math.max(5,Math.round(9*scale))}px"></span>
-                </div>`,
+                html: `<div class="capsule-marker-art" style="width:${width}px;height:${height}px">${inner}</div>`,
                 iconSize: [width, height],
                 iconAnchor: [width / 2, height - Math.max(1, Math.round(scale))],
-                popupAnchor: [0, -Math.round(66 * scale)]
+                popupAnchor: [0, -Math.round((isLv2 ? 76 : 56) * scale)]
             });
         }
 
@@ -1842,7 +1875,7 @@
 
             Object.values(capsuleMarkers).forEach(entry => {
                 if (entry && entry.marker && entry.capsuleImage) {
-                    entry.marker.setIcon(getCapsuleMarkerIcon(entry.capsuleImage, entry.collected, zoomLevel));
+                    entry.marker.setIcon(getCapsuleMarkerIcon(entry.capsuleImage, entry.collected, zoomLevel, entry.capsuleLevel));
                 }
             });
         }
@@ -1952,21 +1985,21 @@
                     console.warn('좌표가 올바르지 않아 타임캡슐 마커를 건너뜁니다:', cap.id, cap.lat, cap.lon);
                     return;
                 }
-                let collected = album.some(item => item.id === cap.id);
+                let collected = isCapsuleCollected(cap.id) || album.some(item => item.id === cap.id);
                 
                 // 기존 문서에 레벨 필드가 없으면 LV.1로 일괄 표시합니다.
                 const capsuleLevel = cap.capsuleLevel === 'lv2' ? 'lv2' : 'lv1';
                 let capsuleImage = capsuleMarkerData(capsuleLevel);
-                let crystalIcon = getCapsuleMarkerIcon(capsuleImage, collected, map.getZoom());
+                let crystalIcon = getCapsuleMarkerIcon(capsuleImage, collected, map.getZoom(), capsuleLevel);
 
                 let marker = L.marker([capLat, capLon], {icon: crystalIcon});
                 let yearLabel = cap.photoYear ? `<br>사진 시기: ${cap.photoYear}` : '';
-                marker.bindPopup(`<b>[${capsuleLevel.toUpperCase()} · ${cap.region || '기타'}] ${cap.title}</b>${yearLabel}<br>${collected ? '수집 완료' : '미발견 타임캡슐'}`);
+                marker.bindPopup(`<b>[${capsuleLevel.toUpperCase()} · ${cap.region || '기타'}] ${cap.title}</b>${yearLabel}<br>${collected ? '수집 완료 · 빛의 흔적을 눌러 사진 다시 보기' : '미발견 타임캡슐'}`);
                 // GPS로 해당 타임캡슐 15m 이내에 접근한 경우에만 클릭하여 개봉할 수 있습니다.
                 marker.on('click', function() {
                     const latestAlbum = getAlbum();
-                    if (latestAlbum.some(item => item.id === cap.id)) {
-                        alert('이미 수집한 타임캡슐입니다.');
+                    if (isCapsuleCollected(cap.id) || latestAlbum.some(item => item.id === cap.id)) {
+                        openCollectedCapsulePhoto(cap);
                         return;
                     }
                     if (!Number.isFinite(currentLat) || !Number.isFinite(currentLon)) {
@@ -2508,8 +2541,8 @@
                 alert("먼저 타임캡슐 발견 지점에 도착해주세요.");
                 return;
             }
-            if (getAlbum().some(item => item.id === activeCapsule.id)) {
-                alert("이미 수집한 타임캡슐입니다.");
+            if (isCapsuleCollected(activeCapsule.id) || getAlbum().some(item => item.id === activeCapsule.id)) {
+                alert("이미 수집한 타임캡슐입니다. 지도에 남은 빛의 흔적을 눌러 사진을 다시 볼 수 있습니다.");
                 closeModal('discovery-modal');
                 return;
             }
@@ -2518,90 +2551,40 @@
                 return;
             }
 
-            // 실제 Firestore 캡슐 객체의 url 필드를 그대로 사용합니다.
+            // 기존 사진 복원 미니게임은 개봉 흐름에서 제외합니다.
+            // 타임캡슐의 원본 사진을 개봉 애니메이션 종료 후 상세 보기로 바로 연결합니다.
             currentMissionCapsule = activeCapsule;
             const photoUrl = resolveCapsulePhotoUrl(currentMissionCapsule);
             if (!photoUrl) {
-                console.error('[LV1] 캡슐 데이터에 url 필드가 없습니다.', currentMissionCapsule);
+                console.error('[Capsule] 캡슐 데이터에 url 필드가 없습니다.', currentMissionCapsule);
                 alert('이 타임캡슐에는 사진 주소(url)가 등록되어 있지 않습니다. 필름은 차감하지 않았습니다.');
                 return;
             }
 
             closeModal('discovery-modal');
-            const showRestorationMission = () => {
-                document.getElementById('target-photo').src = photoUrl;
-                document.getElementById('target-photo').style.filter = 'blur(5px)';
-                document.getElementById('overlay-text').style.display = 'flex';
-                document.getElementById('complete-btn').disabled = true;
-                document.getElementById('complete-btn').className = 'btn btn-secondary';
-                document.getElementById('mission-modal').style.display = 'block';
-            };
-
             const capsuleLevel = currentMissionCapsule.capsuleLevel === 'lv2' ? 'lv2' : 'lv1';
             let opened = false;
+
             if (capsuleLevel === 'lv2') {
-                // LV.2는 기존 승인된 캔버스 파편화 애니메이션을 그대로 사용합니다.
+                // LV.2: 기존 승인된 유리 파편화 애니메이션은 그대로 사용합니다.
                 opened = await new Promise(resolve => {
-                    previewLv2Dissolve((ok) => {
-                        if (ok) showRestorationMission();
-                        resolve(!!ok);
-                    }, true);
+                    previewLv2Dissolve((ok) => resolve(!!ok), true);
                 });
             } else {
-                // LV.1은 오늘 확정한 클린 16프레임 빛 소멸·사진 공개 애니메이션입니다.
-                opened = await playTimeCapsuleOpening(showRestorationMission);
+                // LV.1: 오늘 완성한 클린 16프레임 개봉 애니메이션을 사용합니다.
+                opened = await playTimeCapsuleOpening(null);
             }
 
             if (!opened) return;
+
             completedFilms -= 1;
             updateResourceDisplay();
             saveUserData();
-        }
+            saveCollectedCapsuleRecord(currentMissionCapsule);
+            renderAllMarkers();
 
-        function wipeDust() {
-            document.getElementById('target-photo').style.filter = 'blur(0px)';
-            document.getElementById('overlay-text').style.display = 'none';
-            
-            let btn = document.getElementById('complete-btn');
-            btn.disabled = false;
-            btn.className = 'btn';
-        }
-
-        function savePhoto() {
-            if (!currentMissionCapsule) {
-                alert("타임캡슐 정보를 찾을 수 없습니다. 다시 시도해주세요.");
-                closeModal('mission-modal');
-                return;
-            }
-
-            let photoData = {
-                id: currentMissionCapsule.id,
-                title: currentMissionCapsule.title,
-                region: currentMissionCapsule.region || "기타",
-                photoYear: currentMissionCapsule.photoYear || "",
-                date: new Date().toLocaleDateString(),
-                url: currentMissionCapsule.url,
-                desc: currentMissionCapsule.desc
-            };
-
-            try {
-                let album = getAlbum();
-                if (!album.some(item => item.id === photoData.id)) {
-                    album.push(photoData);
-                    localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
-                    alert("🎉 성공적으로 사진을 도감에 수집했습니다!");
-                    renderAllMarkers();
-                } else {
-                    alert("이미 도감에 등록된 사진입니다!");
-                }
-            } catch (err) {
-                console.error(err);
-                alert("도감 저장 중 오류가 발생했습니다.");
-            }
-
-            closeModal('mission-modal');
-            currentMissionCapsule = null;
-            activeCapsule = null;
+            // 개봉 직후 사진 확대·설명·사진첩 저장 버튼이 있는 상세 화면을 엽니다.
+            openCapsulePhotoDetail();
         }
 
         function openAdminModal() {
@@ -2827,32 +2810,101 @@
         let photoDetailReturnModal = 'album-modal';
 
         // 타임캡슐 개봉 장면/미션 화면에서 사진을 누르면 해당 캡슐의 상세정보를 바로 엽니다.
-        function openCapsulePhotoDetail() {
-            if (!currentMissionCapsule) return;
-            const item = currentMissionCapsule;
-            photoDetailReturnModal =
-                document.getElementById('mission-modal').style.display === 'block'
-                    ? 'mission-modal'
-                    : (document.getElementById('lv2-memory-reveal').style.display === 'flex'
-                        ? 'lv2-memory-reveal' : 'time-capsule-opening');
-
-            document.getElementById('detail-title').innerText = item.title || '광명의 기억';
-            document.getElementById('detail-img').src = item.url || '';
+        function openCollectedCapsulePhoto(capsule) {
+            const stored = getCollectedCapsuleRecords().find(item => item && item.id === capsule.id);
+            const albumItem = getAlbum().find(item => item && item.id === capsule.id);
+            const photo = stored || albumItem || capsule;
+            currentMissionCapsule = {
+                ...capsule,
+                title: photo.title || capsule.title,
+                desc: photo.desc || capsule.desc,
+                photoYear: photo.photoYear || capsule.photoYear,
+                region: photo.region || capsule.region,
+                url: photo.url || resolveCapsulePhotoUrl(capsule)
+            };
+            photoDetailReturnModal = 'map-after-capsule';
+            document.getElementById('detail-title').innerText = currentMissionCapsule.title || '광명의 기억';
+            document.getElementById('detail-img').src = resolveCapsulePhotoUrl(currentMissionCapsule) || '';
             document.getElementById('detail-img').style.transform = 'scale(1)';
-            document.getElementById('detail-desc').innerText = item.desc || '등록된 사진 설명이 없습니다.';
-            document.getElementById('detail-date').innerText =
-                '촬영 시기: ' + (item.photoYear || '미상');
-            document.getElementById('detail-meta').innerText =
-                '장소: ' + (item.region || '미상');
-
-            // 타임캡슐 상세보기에서는 현재 캡슐 사진만 보여주므로 앨범 이동 버튼은 비활성화합니다.
-            document.getElementById('memory-carousel-count').innerText = '타임캡슐 사진';
+            document.getElementById('detail-desc').innerText = currentMissionCapsule.desc || '등록된 사진 설명이 없습니다.';
+            document.getElementById('detail-date').innerText = '촬영 시기: ' + (currentMissionCapsule.photoYear || '미상');
+            document.getElementById('detail-meta').innerText = '장소: ' + (currentMissionCapsule.region || '미상');
+            document.getElementById('memory-carousel-count').innerText = '수집한 타임캡슐 사진';
             document.getElementById('memory-prev').disabled = true;
             document.getElementById('memory-next').disabled = true;
-
+            const saveButton = document.getElementById('detail-save-album-btn');
+            if (saveButton) {
+                const alreadySaved = getAlbum().some(entry => entry.id === capsule.id);
+                saveButton.style.display = 'block';
+                saveButton.disabled = alreadySaved;
+                saveButton.textContent = alreadySaved ? '✓ 사진첩에 저장됨' : '📚 사진첩에 저장';
+            }
             document.getElementById('photo-detail-modal').style.display = 'block';
         }
 
+        function openCapsulePhotoDetail() {
+            if (!currentMissionCapsule) return;
+            const item = currentMissionCapsule;
+            photoDetailReturnModal = 'map-after-capsule';
+            document.getElementById('detail-title').innerText = item.title || '광명의 기억';
+            document.getElementById('detail-img').src = resolveCapsulePhotoUrl(item) || '';
+            document.getElementById('detail-img').style.transform = 'scale(1)';
+            document.getElementById('detail-desc').innerText = item.desc || '등록된 사진 설명이 없습니다.';
+            document.getElementById('detail-date').innerText = '촬영 시기: ' + (item.photoYear || '미상');
+            document.getElementById('detail-meta').innerText = '장소: ' + (item.region || '미상');
+
+            // 개봉 직후에는 해당 사진 한 장만 표시하고, 저장은 사용자가 직접 선택합니다.
+            document.getElementById('memory-carousel-count').innerText = '타임캡슐 사진';
+            document.getElementById('memory-prev').disabled = true;
+            document.getElementById('memory-next').disabled = true;
+            const saveButton = document.getElementById('detail-save-album-btn');
+            if (saveButton) {
+                const alreadySaved = getAlbum().some(entry => entry.id === item.id);
+                saveButton.style.display = 'block';
+                saveButton.disabled = alreadySaved;
+                saveButton.textContent = alreadySaved ? '✓ 사진첩에 저장됨' : '📚 사진첩에 저장';
+            }
+            document.getElementById('photo-detail-modal').style.display = 'block';
+        }
+
+        function saveOpenedCapsuleToAlbum() {
+            if (!currentMissionCapsule) {
+                alert('저장할 타임캡슐 사진을 찾을 수 없습니다.');
+                return;
+            }
+            const capsule = currentMissionCapsule;
+            const album = getAlbum();
+            if (album.some(item => item.id === capsule.id)) {
+                alert('이미 사진첩에 저장된 사진입니다.');
+                const button = document.getElementById('detail-save-album-btn');
+                if (button) { button.disabled = true; button.textContent = '✓ 사진첩에 저장됨'; }
+                return;
+            }
+
+            const photoData = {
+                id: capsule.id,
+                title: capsule.title || '광명의 기억',
+                region: capsule.region || '기타',
+                photoYear: capsule.photoYear || '',
+                date: new Date().toLocaleDateString(),
+                url: resolveCapsulePhotoUrl(capsule),
+                desc: capsule.desc || ''
+            };
+            try {
+                album.push(photoData);
+                localStorage.setItem('gwangmyeong_album', JSON.stringify(album));
+                renderAllMarkers();
+                const button = document.getElementById('detail-save-album-btn');
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = '✓ 사진첩에 저장됨';
+                }
+                alert('사진을 사진첩에 저장했습니다.');
+            } catch (err) {
+                console.error('[Album] 사진 저장 실패:', err);
+                alert('사진첩 저장 중 오류가 발생했습니다.');
+            }
+        }
 
         function renderMemoryPhoto(index) {
             const album = getAlbum();
@@ -2885,6 +2937,9 @@
             if (index < 0) index = album.findIndex(item => item.url === url);
             if (index < 0) index = 0;
             renderMemoryPhoto(index);
+            const saveButton = document.getElementById('detail-save-album-btn');
+            if (saveButton) saveButton.style.display = 'none';
+            photoDetailReturnModal = 'album-modal';
             document.getElementById('album-modal').style.display = 'none';
             document.getElementById('photo-detail-modal').style.display = 'block';
         }
@@ -2922,6 +2977,14 @@
                     document.getElementById('mission-modal').style.display = 'block';
                 } else if (photoDetailReturnModal === 'time-capsule-opening') {
                     document.getElementById('time-capsule-opening').style.display = 'flex';
+                } else if (photoDetailReturnModal === 'map-after-capsule') {
+                    currentMissionCapsule = null;
+                    activeCapsule = null;
+                    const saveButton = document.getElementById('detail-save-album-btn');
+                    if (saveButton) { saveButton.style.display = 'none'; saveButton.disabled = false; }
+                } else {
+                    const saveButton = document.getElementById('detail-save-album-btn');
+                    if (saveButton) saveButton.style.display = 'none';
                 }
             }
         }
