@@ -134,7 +134,7 @@
             position:absolute; left:50%; top:0;
             object-fit:contain; display:block;
             transform:translateX(-50%) translateY(2px);
-            filter:drop-shadow(0 0 3px rgba(64,190,255,.24));
+            filter:none;
             transform-origin:50% 92%;
         }
         .capsule-marker-ground {
@@ -148,15 +148,40 @@
         .capsule-collected-trace {
             position:absolute; left:50%; bottom:2px;
             transform:translateX(-50%);
-            width:30px; height:12px; border-radius:50%;
-            border:1.5px solid rgba(91,222,255,.82);
-            background:radial-gradient(ellipse,rgba(83,207,255,.28) 0%,rgba(83,207,255,.10) 42%,transparent 76%);
-            box-shadow:0 0 7px rgba(68,194,255,.62), inset 0 0 5px rgba(68,194,255,.26);
-            animation:collected-trace-pulse 2.8s ease-in-out infinite;
+            width:54px; height:22px; border-radius:50%;
+            border:1.8px solid rgba(120,238,255,.98);
+            background:
+                radial-gradient(ellipse at 50% 50%, rgba(125,242,255,.48) 0%, rgba(62,203,255,.25) 34%, rgba(112,93,255,.13) 58%, transparent 78%);
+            box-shadow:
+                0 0 5px rgba(126,238,255,.98),
+                0 0 13px rgba(48,192,255,.86),
+                0 0 25px rgba(74,120,255,.62),
+                0 0 38px rgba(40,195,255,.30),
+                inset 0 0 9px rgba(124,234,255,.62);
+            animation:collected-trace-pulse 2.5s ease-in-out infinite;
+            z-index:3;
+        }
+        .capsule-collected-trace::before {
+            content:""; position:absolute; left:50%; top:50%;
+            width:76px; height:34px; border-radius:50%;
+            transform:translate(-50%,-50%);
+            background:radial-gradient(ellipse,rgba(86,220,255,.30) 0%,rgba(95,155,255,.15) 43%,rgba(142,105,255,.08) 62%,transparent 78%);
+            filter:blur(3px); z-index:-1;
+        }
+        .capsule-collected-trace::after {
+            content:"✦"; position:absolute; left:50%; top:-17px;
+            transform:translateX(-50%);
+            color:#c9fbff; font-size:12px; line-height:1;
+            text-shadow:0 0 5px #65eaff,0 0 12px #5a9dff,0 0 18px #9c82ff;
+            animation:trace-sparkle 2.5s ease-in-out infinite;
         }
         @keyframes collected-trace-pulse {
-            0%,100% { opacity:.62; transform:translateX(-50%) scale(.94); }
-            50% { opacity:1; transform:translateX(-50%) scale(1.08); }
+            0%,100% { opacity:.78; transform:translateX(-50%) scale(.92); filter:brightness(1); }
+            50% { opacity:1; transform:translateX(-50%) scale(1.12); filter:brightness(1.45); }
+        }
+        @keyframes trace-sparkle {
+            0%,100% { opacity:.35; transform:translate(-50%,2px) scale(.8) rotate(0deg); }
+            50% { opacity:1; transform:translate(-50%,-3px) scale(1.25) rotate(35deg); }
         }
         .crystal-capsule-marker.is-collected .capsule-marker-art img { display:none !important; }
 
@@ -1843,12 +1868,14 @@
             const scale = Math.max(0.68, Math.min(1.12, Math.pow(1.075, zoomLevel - 14)));
             // LV.1은 지도에서 조금 작게, 구조가 큰 LV.2는 조금 크게 표시합니다.
             const isLv2 = capsuleLevel === 'lv2';
-            const objectWidth = Math.round((isLv2 ? 49 : 32) * scale);
-            const objectHeight = Math.round((isLv2 ? 66 : 45) * scale);
-            const width = Math.round((isLv2 ? 56 : 40) * scale);
-            const height = Math.round((isLv2 ? 72 : 52) * scale);
-            const groundWidth = Math.round((isLv2 ? 43 : 27) * scale);
+            const objectWidth = Math.round((isLv2 ? 42 : 32) * scale);
+            const objectHeight = Math.round((isLv2 ? 58 : 45) * scale);
+            const width = Math.round((isLv2 ? 49 : 40) * scale);
+            const height = Math.round((isLv2 ? 65 : 52) * scale);
+            const groundWidth = Math.round((isLv2 ? 37 : 27) * scale);
             const groundHeight = Math.max(5, Math.round((isLv2 ? 8 : 6) * scale));
+            const displayWidth = collected ? Math.max(width, 78) : width;
+            const displayHeight = collected ? Math.max(height, 58) : height;
             const inner = collected
                 ? `<span class="capsule-collected-trace"></span>`
                 : `<img src="${capsuleImage}" alt="${isLv2 ? 'LV.2' : 'LV.1'} 타임캡슐"
@@ -1857,10 +1884,10 @@
                    <span class="capsule-marker-ground" style="width:${groundWidth}px;height:${groundHeight}px"></span>`;
             return L.divIcon({
                 className: `crystal-capsule-marker${collected ? ' is-collected' : ''}`,
-                html: `<div class="capsule-marker-art" style="width:${width}px;height:${height}px">${inner}</div>`,
-                iconSize: [width, height],
-                iconAnchor: [width / 2, height - Math.max(1, Math.round(scale))],
-                popupAnchor: [0, -Math.round((isLv2 ? 76 : 56) * scale)]
+                html: `<div class="capsule-marker-art" style="width:${displayWidth}px;height:${displayHeight}px">${inner}</div>`,
+                iconSize: [displayWidth, displayHeight],
+                iconAnchor: [displayWidth / 2, displayHeight - Math.max(1, Math.round(scale))],
+                popupAnchor: [0, -Math.round((isLv2 ? 68 : 56) * scale)]
             });
         }
 
